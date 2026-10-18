@@ -100,6 +100,38 @@ export const PlotSitePlan: React.FC<PlotSitePlanProps> = ({
     setIsDragging(false);
   };
 
+  // Touch pan handling for mobile touchscreens
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'svg' ||
+        target.id === 'siteplan-canvas-bg' ||
+        target.classList.contains('pointer-events-none') ||
+        target.tagName === 'line' ||
+        target.tagName === 'pattern'
+      ) {
+        setIsDragging(true);
+        setDragStart({ x: touch.clientX - panOffset.x, y: touch.clientY - panOffset.y });
+      }
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (isDragging && e.touches.length === 1) {
+      const touch = e.touches[0];
+      setPanOffset({
+        x: touch.clientX - dragStart.x,
+        y: touch.clientY - dragStart.y
+      });
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
   // Filtered Plots Logic
   const filteredPlots = plots.filter((plot) => {
     if (statusFilter !== 'ALL' && plot.status !== statusFilter) return false;
@@ -239,12 +271,19 @@ export const PlotSitePlan: React.FC<PlotSitePlanProps> = ({
       <div className="flex flex-col lg:flex-row flex-1 overflow-hidden min-h-[520px] sm:min-h-[620px]">
         {/* SVG Canvas Viewport */}
         <div
-          className="relative flex-1 min-w-0 min-h-[520px] sm:min-h-[620px] cursor-grab active:cursor-grabbing overflow-hidden bg-[#0d1612]"
+          className="relative flex-1 min-w-0 min-h-[460px] sm:min-h-[520px] lg:min-h-[620px] cursor-grab active:cursor-grabbing overflow-hidden bg-[#0d1612]"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
+          {/* Mobile Touch Navigation Hint */}
+          <div className="lg:hidden absolute top-2.5 left-3 z-10 pointer-events-none bg-[#0a1f17]/85 backdrop-blur-xs border border-[#1b3e2d] text-[#c2d1c9] px-2.5 py-1 rounded-full text-[10px] flex items-center gap-1.5 shadow-xs">
+            <span>👆 Drag to pan • Tap plot to view</span>
+          </div>
         <svg
           ref={svgRef}
           viewBox={config.viewBox}

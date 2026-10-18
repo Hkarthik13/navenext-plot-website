@@ -89,9 +89,21 @@ export const PlotDrawer: React.FC<PlotDrawerProps> = ({
   const isSold = plot.status === 'SOLD';
 
   return (
-    <div
-      className={`w-full lg:w-[380px] xl:w-[410px] shrink-0 border-t lg:border-t-0 lg:border-l border-[#1b3327] bg-[#0c1813] text-white flex flex-col font-sans-clean z-20 overflow-hidden shadow-2xl transition-all duration-300 ${className}`}
-    >
+    <>
+      {/* Mobile Backdrop Overlay */}
+      <div
+        className="lg:hidden fixed inset-0 bg-black/65 backdrop-blur-xs z-40 transition-opacity"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      <div
+        className={`fixed inset-x-0 bottom-0 z-50 max-h-[85vh] rounded-t-2xl border-t-2 border-[#c5a059] lg:static lg:inset-auto lg:z-20 lg:rounded-none lg:border-t-0 lg:border-l lg:border-[#1b3327] lg:max-h-none w-full lg:w-[380px] xl:w-[410px] shrink-0 bg-[#0c1813] text-white flex flex-col font-sans-clean overflow-hidden shadow-2xl animate-page-enter ${className}`}
+      >
+        {/* Mobile Pull Handle */}
+        <div className="lg:hidden flex justify-center pt-2.5 pb-1 bg-[#0f221a]">
+          <div className="w-12 h-1.5 bg-[#2a4d3a] rounded-full" />
+        </div>
       {/* Top Header */}
       <div className="px-5 py-3.5 bg-[#0f221a] border-b border-[#1b3327] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5">
@@ -380,5 +392,6 @@ export const PlotDrawer: React.FC<PlotDrawerProps> = ({
         )}
       </div>
     </div>
+    </>
   );
 };
