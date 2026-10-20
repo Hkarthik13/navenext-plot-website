@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Plot Number Detector</title>
+</head>
+<body>
+  <canvas id="c" width="1024" height="576"></canvas>
+  <pre id="out"></pre>
+  <script>
+    const img = new Image();
+    img.src = '/images/masterplan_enclave.jpg';
+    img.onload = () => {
+      const c = document.getElementById('c');
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, 1024, 576);
+      const imgData = ctx.getImageData(0, 0, 1024, 576);
+      const data = imgData.data;
+
+      // Find white pixels
+      const whitePixels = [];
+      for (let y = 0; y < 576; y++) {
+        for (let x = 0; x < 1024; x++) {
+          const idx = (y * 1024 + x) * 4;
+          const r = data[idx];
+          const g = data[idx + 1];
+          const b = data[idx + 2];
+          // Bright white text has high r, g, b with low color difference
+          if (r > 215 && g > 215 && b > 215 && Math.abs(r - g) < 20 && Math.abs(g - b) < 20) {
+            whitePixels.push({ x, y });
+          }
+        }
+      }
+
+      // Cluster pixels into text labels (DBSCAN / simple distance clustering)
+      const clusters = [];
+      const visited = new Set();
+      const radius = 15;
+
+      for (let i = 0; i < whitePixels.length; i++) {
+        if (visited.has(i)) continue;
+        visited.add(i);
+        const cluster = [whitePixels[i]];
+        const queue = [whitePixels[i]];
+
+        while (queue.length > 0) {
+          const pt = queue.pop();
+          for (let j = 0; j < whitePixels.length; j++) {
+            if (visited.has(j)) continue;
+            const other = whitePixels[j];
+            const dist = Math.hypot(pt.x - other.x, pt.y - other.y);
+            if (dist <= radius) {
+              visited.add(j);
+              cluster.push(other);
+              queue.push(other);
+            }
+          }
+        }
+
+        // Only clusters with enough pixels to be a number (e.g. 15 to 400 pixels)
+        if (cluster.length >= 15 && cluster.length <= 600) {
+          let sumX = 0, sumY = 0;
+          let minX = 1024, maxX = 0, minY = 576, maxY = 0;
+          cluster.forEach(p => {
+            sumX += p.x;
+            sumY += p.y;
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
+          });
+          const width = maxX - minX + 1;
+          const height = maxY - minY + 1;
+          // Digits are typically 8 to 35px wide, 8 to 25px high
+          if (width >= 8 && width <= 45 && height >= 8 && height <= 25) {
+            clusters.push({
+              centerX: Math.round(sumX / cluster.length),
+              centerY: Math.round(sumY / cluster.length),
+              minX, maxX, minY, maxY,
+              width, height,
+              pixelCount: cluster.length
+            });
+          }
+        }
+      }
+
+      // Sort clusters by Y then X
+      clusters.sort((a, b) => a.centerY - b.centerY || a.centerX - b.centerX);
+
+      // Draw red boxes around detected labels
+      ctx.strokeStyle = '#ff0000';
+      ctx.lineWidth = 1.5;
+      clusters.forEach((cl, idx) => {
+        ctx.strokeRect(cl.minX - 2, cl.minY - 2, cl.width + 4, cl.height + 4);
+      });
+
+      document.getElementById('out').textContent = JSON.stringify(clusters, null, 2);
+      window.__CLUSTERS = clusters;
+    };
+  </script>
+</body>
+</html>

@@ -870,36 +870,73 @@ export const PROJECTS: Project[] = [
       greenSpaces: [], facilities: [], gate: { x: 80, y: 360, label: 'FOOTHILLS ENTRY' }
     }
   },
-  // Mysuru Project 2
+  // Mysuru Project 2 - Luxury Architectural Township
   {
     id: 'proj-mysuru-heritage-woods',
     slug: 'heritage-woods',
     name: 'Heritage Woods Sanctuary',
-    tagline: 'Quiet Luxury Plotted Living near Bogadi Ring Road',
+    tagline: 'Luxury Plotted Township with 40ft Main Boulevard & Private Clubhouse',
     locality: 'Bogadi Ring Road',
     cityId: 'mysuru',
     cityName: 'Mysuru',
     state: 'Karnataka',
     heroImage: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=85',
-    galleryImages: ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80'],
-    priceRangeText: '₹34 Lakhs – ₹75 Lakhs',
-    minPrice: 3400000,
-    maxPrice: 7500000,
-    totalAreaAcres: 16,
-    totalPlots: 22,
+    galleryImages: [
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80'
+    ],
+    priceRangeText: '₹34.8 Lakhs – ₹69.6 Lakhs',
+    minPrice: 3480000,
+    maxPrice: 6960000,
+    totalAreaAcres: 24,
+    totalPlots: 48,
     approvalAuthority: 'MUDA & RERA Approved',
     approvalNumber: 'MUDA/PL/2026/112',
     verificationBadge: 'MUDA Sanctioned Layout',
-    description: 'Nestled near Bogadi lake and top engineering institutes with quick access to the Bengaluru Expressway.',
-    roadConnectivity: ['3 Mins to Ring Road', '15 Mins to Mysuru Palace'],
-    developer: { name: 'Mysore Heritage Habitats', experienceYears: 12, totalProjects: 9, headquarters: 'Mysuru', description: 'Mysuru gated developments.' },
-    amenities: [{ name: 'Avenue Trees', iconName: 'Trees', description: 'Over 500 indigenous avenue trees' }],
-    landmarks: [{ name: 'All India Institute of Speech and Hearing', distance: '4.5 km', category: 'health' }],
+    description: 'A prestige gated sanctuary near Bogadi Ring Road. Masterplanned with wide 40ft tree-lined boulevards, central botanical park, luxury clubhouse with swimming pool, and pristine rectangular villa plots.',
+    roadConnectivity: ['3 Mins to Bogadi Ring Road', '12 Mins to Bengaluru Expressway', '15 Mins to Mysuru Palace'],
+    developer: { name: 'Mysore Heritage Habitats', experienceYears: 12, totalProjects: 9, headquarters: 'Mysuru', description: 'Mysuru gated luxury developments.' },
+    amenities: [
+      { name: '40ft & 33ft Asphalt Roads', iconName: 'Compass', description: 'Heavy-duty asphalt roads with granite kerbing & stormwater drainage' },
+      { name: 'The Woods Club & Azure Pool', iconName: 'Building', description: 'Private community clubhouse with resort-style swimming pool' },
+      { name: 'Heritage Botanical Park', iconName: 'Trees', description: '2.5 acres of manicured botanical greens, reflexology path and children turf' },
+      { name: 'Grand Entrance Gate & Security', iconName: 'ShieldCheck', description: '24/7 manned security arch with automated RFID boom barriers & CCTV' },
+      { name: 'Concealed Underground Utilities', iconName: 'Zap', description: '100% underground power cabling, water grid and fiber internet lines' }
+    ],
+    landmarks: [
+      { name: 'Bogadi Lake & Walking Promenade', distance: '1.8 km', category: 'leisure' },
+      { name: 'All India Institute of Speech and Hearing', distance: '4.5 km', category: 'health' },
+      { name: 'National Institute of Engineering (NIE)', distance: '5.2 km', category: 'education' },
+      { name: 'Mysuru City Railway Station', distance: '9.8 km', category: 'transit' }
+    ],
     coordinates: [12.3020, 76.5980],
     layoutConfig: {
-      viewBox: '0 0 1200 800', width: 1200, height: 800,
-      roads: [{ id: 'rd-hw-1', name: '33FT WOODS BOULEVARD', x: 80, y: 360, width: 1040, height: 70, label: '33FT WOODS BOULEVARD' }],
-      greenSpaces: [], facilities: [], gate: { x: 80, y: 360, label: 'HERITAGE GATE' }
+      viewBox: '0 0 1200 800',
+      width: 1200,
+      height: 800,
+      roads: [
+        { id: 'rd-hw-main', name: '40FT HERITAGE MAIN BOULEVARD', x: 80, y: 350, width: 1040, height: 64, label: '40FT HERITAGE MAIN BOULEVARD' },
+        { id: 'rd-hw-north', name: '33FT WOODLAND AVENUE', x: 80, y: 150, width: 1040, height: 48, label: '33FT WOODLAND AVENUE' },
+        { id: 'rd-hw-south', name: '30FT ORCHARD WALK', x: 80, y: 570, width: 1040, height: 48, label: '30FT ORCHARD WALK' },
+        { id: 'rd-hw-west', name: 'WEST CROSS AVENUE', x: 380, y: 150, width: 44, height: 468, label: 'WEST CROSS AVENUE', isVertical: true },
+        { id: 'rd-hw-east', name: 'EAST CROSS AVENUE', x: 770, y: 150, width: 44, height: 468, label: 'EAST CROSS AVENUE', isVertical: true },
+        { id: 'rd-hw-palm', name: 'PALM ENTRY WAY', x: 580, y: 414, width: 50, height: 330, label: 'PALM ENTRY WAY', isVertical: true }
+      ],
+      greenSpaces: [
+        { id: 'pk-botanical', name: 'Heritage Botanical Park', x: 440, y: 218, width: 310, height: 112, label: 'HERITAGE BOTANICAL PARK', kind: 'park' },
+        { id: 'pk-children', name: 'Children Adventure Turf & Gazebo', x: 80, y: 638, width: 280, height: 95, label: 'CHILDREN PLAY PARK & GAZEBO', kind: 'park' },
+        { id: 'pk-zen', name: 'Zen Meditation Garden', x: 840, y: 638, width: 280, height: 95, label: 'ZEN MEDITATION GARDEN', kind: 'park' },
+        { id: 'pk-pool', name: 'Azure Pool', x: 990, y: 55, width: 115, height: 75, label: 'AZURE POOL', kind: 'water' }
+      ],
+      facilities: [
+        { id: 'fac-club', name: 'The Woods Clubhouse', x: 825, y: 50, width: 145, height: 85, label: 'THE WOODS CLUBHOUSE' }
+      ],
+      gate: {
+        x: 605,
+        y: 740,
+        label: 'HERITAGE GRAND SECURITY ARCH'
+      }
     }
   }
 ];
@@ -1153,6 +1190,167 @@ export function generateEmeraldEnclavePlots(): Plot[] {
 }
 
 // Each project receives its own parcel geometry and masterplan treatment.
+// Heritage Woods Sanctuary (Luxury Gated Township with 48 Precision Rectangular Plots)
+export function generateHeritageWoodsPlots(): Plot[] {
+  const plots: Plot[] = [];
+  const projectId = 'proj-mysuru-heritage-woods';
+  const baseRate = 2900;
+
+  const addPlot = (
+    num: number,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    areaSqFt: number,
+    dimensions: string,
+    facing: Plot['facing'],
+    status: Plot['status'],
+    isCorner: boolean = false,
+    isPark: boolean = false,
+    roadWidthFt: number = 30,
+    phase: string = 'Phase 1 - Royal Avenue'
+  ) => {
+    plots.push({
+      id: `plot-hw-${num.toString().padStart(2, '0')}`,
+      projectId,
+      plotNumber: num.toString().padStart(2, '0'),
+      dimensions,
+      areaSqFt,
+      facing,
+      price: areaSqFt * baseRate,
+      pricePerSqFt: baseRate,
+      status,
+      cornerPlot: isCorner,
+      parkFacing: isPark,
+      roadWidthFt,
+      phase,
+      geometry: {
+        x,
+        y,
+        width,
+        height,
+        points: `${x},${y} ${x + width},${y} ${x + width},${y + height} ${x},${y + height}`
+      },
+      notes: isPark
+        ? 'Direct front view of Grand Central Botanical Park & reflexology path'
+        : isCorner
+        ? 'Prime dual-access corner villa parcel with extended road frontage'
+        : undefined
+    });
+  };
+
+  // --- SECTOR 1: NORTH-WEST WOODLAND (Plots 01 to 12) ---
+  const r1A_x = [80, 128, 176, 224, 272, 320];
+  // Row 1A: Facing 33ft Woodland Avenue (North row, y: 60, height: 75)
+  r1A_x.forEach((x, i) => {
+    const num = i + 1; // 1 to 6
+    const isCorner = i === 0 || i === 5;
+    const area = isCorner ? 2400 : (i % 2 === 0 ? 1500 : 1200);
+    const dim = isCorner ? "40' × 60'" : (i % 2 === 0 ? "30' × 50'" : "30' × 40'");
+    let status: Plot['status'] = 'AVAILABLE';
+    if (num === 2 || num === 5) status = 'RESERVED';
+    if (num === 4) status = 'SOLD';
+    addPlot(num, x, 60, 44, 75, area, dim, 'North', status, isCorner, false, 33, 'Phase 1 - Woodland Avenue');
+  });
+
+  // Row 1B: South of 33ft Woodland Ave, Facing 40ft Main Boulevard (y: 218, height: 112)
+  r1A_x.forEach((x, i) => {
+    const num = i + 7; // 7 to 12
+    const isCorner = i === 0 || i === 5;
+    const area = isCorner ? 2400 : (i % 2 === 0 ? 1500 : 1200);
+    const dim = isCorner ? "40' × 60'" : (i % 2 === 0 ? "30' × 50'" : "30' × 40'");
+    let status: Plot['status'] = 'AVAILABLE';
+    if (num === 8 || num === 11) status = 'RESERVED';
+    if (num === 9 || num === 12) status = 'SOLD';
+    addPlot(num, x, 218, 44, 112, area, dim, 'South', status, isCorner, false, 40, 'Phase 1 - Boulevard Enclave');
+  });
+
+  // --- SECTOR 2: NORTH-CENTRAL BOTANICAL (Plots 13 to 20) ---
+  const r2_x = [440, 481, 522, 563, 604, 645, 686, 727];
+  r2_x.forEach((x, i) => {
+    const num = i + 13; // 13 to 20
+    const isCorner = i === 0 || i === 7;
+    const area = isCorner ? 2400 : 1200;
+    const dim = isCorner ? "40' × 60'" : "30' × 40'";
+    let status: Plot['status'] = 'AVAILABLE';
+    if (num === 14 || num === 18) status = 'RESERVED';
+    if (num === 16 || num === 20) status = 'SOLD';
+    addPlot(num, x, 60, 38, 75, area, dim, 'South', status, isCorner, true, 33, 'Phase 1 - Botanical View');
+  });
+
+  // --- SECTOR 3: NORTH-EAST CLUBHOUSE & POOL (Plots 21 to 26) ---
+  const r3_x = [825, 872, 919, 966, 1013, 1060];
+  r3_x.forEach((x, i) => {
+    const num = i + 21; // 21 to 26
+    const isCorner = i === 0 || i === 5;
+    const area = isCorner ? 2400 : (i % 2 === 0 ? 1500 : 1200);
+    const dim = isCorner ? "40' × 60'" : (i % 2 === 0 ? "30' × 50'" : "30' × 40'");
+    let status: Plot['status'] = 'AVAILABLE';
+    if (num === 22 || num === 25) status = 'RESERVED';
+    if (num === 23) status = 'SOLD';
+    addPlot(num, x, 218, 43, 112, area, dim, 'South', status, isCorner, false, 40, 'Phase 1 - Clubhouse Enclave');
+  });
+
+  // --- SECTOR 4: SOUTH-WEST CENTRAL (Plots 27 to 32) ---
+  r1A_x.forEach((x, i) => {
+    const num = i + 27; // 27 to 32
+    const isCorner = i === 0 || i === 5;
+    const area = isCorner ? 2400 : (i % 2 === 0 ? 1500 : 1200);
+    const dim = isCorner ? "40' × 60'" : (i % 2 === 0 ? "30' × 50'" : "30' × 40'");
+    let status: Plot['status'] = 'AVAILABLE';
+    if (num === 28 || num === 31) status = 'RESERVED';
+    if (num === 30) status = 'SOLD';
+    addPlot(num, x, 434, 44, 116, area, dim, 'North', status, isCorner, false, 40, 'Phase 2 - Boulevard South');
+  });
+
+  // --- SECTOR 5: SOUTH-EAST CENTRAL (Plots 33 to 38) ---
+  r3_x.forEach((x, i) => {
+    const num = i + 33; // 33 to 38
+    const isCorner = i === 0 || i === 5;
+    const area = isCorner ? 2400 : (i % 2 === 0 ? 1500 : 1200);
+    const dim = isCorner ? "40' × 60'" : (i % 2 === 0 ? "30' × 50'" : "30' × 40'");
+    let status: Plot['status'] = 'AVAILABLE';
+    if (num === 34 || num === 37) status = 'RESERVED';
+    if (num === 36) status = 'SOLD';
+    addPlot(num, x, 434, 43, 116, area, dim, 'North', status, isCorner, false, 40, 'Phase 2 - Zen Pavilion');
+  });
+
+  // --- SECTOR 6: SOUTH PALM ENTRY BOULEVARD (Plots 39 to 44) ---
+  const westEntry_x = [450, 492, 534];
+  westEntry_x.forEach((x, i) => {
+    const num = i + 39; // 39, 40, 41
+    const isCorner = i === 2;
+    const area = isCorner ? 2400 : 1500;
+    const dim = isCorner ? "40' × 60'" : "30' × 50'";
+    let status: Plot['status'] = 'AVAILABLE';
+    if (num === 40) status = 'RESERVED';
+    if (num === 41) status = 'SOLD';
+    addPlot(num, x, 434, 38, 116, area, dim, 'East', status, isCorner, false, 40, 'Phase 2 - Palm Boulevard');
+  });
+
+  const eastEntry_x = [642, 684, 726];
+  eastEntry_x.forEach((x, i) => {
+    const num = i + 42; // 42, 43, 44
+    const isCorner = i === 0;
+    const area = isCorner ? 2400 : 1500;
+    const dim = isCorner ? "40' × 60'" : "30' × 50'";
+    let status: Plot['status'] = 'AVAILABLE';
+    if (num === 43) status = 'RESERVED';
+    if (num === 44) status = 'SOLD';
+    addPlot(num, x, 434, 38, 116, area, dim, 'West', status, isCorner, false, 40, 'Phase 2 - Palm Boulevard');
+  });
+
+  // --- SECTOR 7: SOUTH MEADOWS & ORCHARD (Plots 45 to 48) ---
+  addPlot(45, 410, 638, 52, 95, 1800, "36' × 50'", 'North', 'AVAILABLE', true, false, 30, 'Phase 2 - Orchard Walk');
+  addPlot(46, 470, 638, 52, 95, 1500, "30' × 50'", 'North', 'RESERVED', false, false, 30, 'Phase 2 - Orchard Walk');
+  addPlot(47, 670, 638, 52, 95, 1500, "30' × 50'", 'North', 'AVAILABLE', false, false, 30, 'Phase 2 - Orchard Walk');
+  addPlot(48, 730, 638, 52, 95, 2400, "40' × 60'", 'North', 'AVAILABLE', true, false, 30, 'Phase 2 - Orchard Walk');
+
+  return plots;
+}
+
+// Each project receives its own parcel geometry and masterplan treatment.
 export function generateGenericPlots(projectId: string, count: number, baseRate: number): Plot[] {
   return generateProjectPlots(projectId, count, baseRate);
 }
@@ -1175,7 +1373,7 @@ export const DEFAULT_PLOTS: Plot[] = [
   ...generateGenericPlots('proj-trichy-cauvery-grand', 24, 2250),
   ...generateGenericPlots('proj-salem-yercaud-foothills', 20, 1950),
   ...generateGenericPlots('proj-mysuru-chamundi-crest', 20, 3100),
-  ...generateGenericPlots('proj-mysuru-heritage-woods', 22, 2900)
+  ...generateHeritageWoodsPlots()
 ];
 
 export const FREQUENT_QUESTIONS = [

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Maximize2, RotateCcw, Search, Sparkles, ZoomIn, ZoomOut } from 'lucide-react';
 import { Plot, PlotGeometry, PlotStatus, Project } from '../../types';
 import { formatINR } from '../../utils/formatters';
@@ -416,54 +416,86 @@ export const PlotSitePlan: React.FC<PlotSitePlanProps> = ({
                   onMouseEnter={() => setHovered(plot)}
                   onMouseLeave={() => setHovered(null)}
                 >
-                  <polygon
-                    points={shape.points}
-                    fill={fill}
-                    filter={'url(#' + svgId + '-shadow)'}
-                    fillOpacity={matches ? 0.96 : 0.12}
-                    stroke={palette.boundary}
-                    strokeWidth={selected ? 4 : active ? 3 : 1.8}
-                    strokeLinejoin="round"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  <polygon
-                    points={shape.points}
-                    fill={selected || active ? '#f2d487' : 'transparent'}
-                    fillOpacity={selected || active ? 0.12 : 0}
-                    stroke={selected ? '#fff8d8' : active ? '#fff0bc' : palette.boundary}
-                    strokeWidth={selected ? 4 : active ? 3 : 1.8}
-                    strokeLinejoin="round"
-                    vectorEffect="non-scaling-stroke"
-                    pointerEvents="none"
-                  />
-                  <text
-                    x={shape.centerX}
-                    y={shape.centerY}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill="#fff"
-                    fontSize={Math.max(10, Math.min(24, Math.min(shape.width, shape.height) * 0.33))}
-                    fontFamily="Arial, sans-serif"
-                    fontWeight="700"
-                    paintOrder="stroke"
-                    stroke="#243125"
-                    strokeWidth="3"
-                    strokeLinejoin="round"
-                    filter={'url(#' + svgId + '-label)'}
-                    opacity={matches ? 1 : 0.4}
-                    pointerEvents="none"
-                  >
-                    {plot.plotNumber.replace(/^P-/, '')}
-                  </text>
-                  <circle
-                    cx={shape.right - Math.min(10, shape.width * 0.12)}
-                    cy={shape.top + Math.min(10, shape.height * 0.12)}
-                    r={Math.max(3, Math.min(5, Math.min(shape.width, shape.height) * 0.055))}
-                    fill={statusColor}
-                    stroke="#fff2d5"
-                    strokeWidth="1.2"
-                    pointerEvents="none"
-                  />
+                  {isVerifiedImage ? (
+                    <>
+                      {/* Interactive hotspot for verified masterplan */}
+                      <polygon
+                        points={shape.points}
+                        fill={selected ? 'rgba(234, 179, 8, 0.42)' : active ? 'rgba(234, 179, 8, 0.28)' : 'rgba(0, 0, 0, 0.001)'}
+                        stroke={selected ? '#ffffff' : active ? '#ffd700' : 'rgba(234, 179, 8, 0.35)'}
+                        strokeWidth={selected ? 3 : active ? 2.5 : 1.2}
+                        strokeLinejoin="round"
+                        vectorEffect="non-scaling-stroke"
+                        opacity={matches ? 1 : 0.18}
+                        style={{
+                          filter: selected || active ? 'drop-shadow(0 0 8px rgba(255, 215, 0, 0.8))' : 'none',
+                          cursor: 'pointer'
+                        }}
+                      />
+                      {/* Status indicator dot at top-right corner */}
+                      <circle
+                        cx={shape.right - 5}
+                        cy={shape.top + 5}
+                        r={active || selected ? 4.5 : 3.5}
+                        fill={statusColor}
+                        stroke="#ffffff"
+                        strokeWidth="1.2"
+                        pointerEvents="none"
+                        opacity={matches ? 1 : 0.2}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <polygon
+                        points={shape.points}
+                        fill={fill}
+                        filter={'url(#' + svgId + '-shadow)'}
+                        fillOpacity={matches ? 0.96 : 0.12}
+                        stroke={palette.boundary}
+                        strokeWidth={selected ? 4 : active ? 3 : 1.8}
+                        strokeLinejoin="round"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                      <polygon
+                        points={shape.points}
+                        fill={selected || active ? '#f2d487' : 'transparent'}
+                        fillOpacity={selected || active ? 0.12 : 0}
+                        stroke={selected ? '#fff8d8' : active ? '#fff0bc' : palette.boundary}
+                        strokeWidth={selected ? 4 : active ? 3 : 1.8}
+                        strokeLinejoin="round"
+                        vectorEffect="non-scaling-stroke"
+                        pointerEvents="none"
+                      />
+                      <text
+                        x={shape.centerX}
+                        y={shape.centerY}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fill="#fff"
+                        fontSize={Math.max(10, Math.min(24, Math.min(shape.width, shape.height) * 0.33))}
+                        fontFamily="Arial, sans-serif"
+                        fontWeight="700"
+                        paintOrder="stroke"
+                        stroke="#243125"
+                        strokeWidth="3"
+                        strokeLinejoin="round"
+                        filter={'url(#' + svgId + '-label)'}
+                        opacity={matches ? 1 : 0.4}
+                        pointerEvents="none"
+                      >
+                        {plot.plotNumber.replace(/^P-/, '')}
+                      </text>
+                      <circle
+                        cx={shape.right - Math.min(10, shape.width * 0.12)}
+                        cy={shape.top + Math.min(10, shape.height * 0.12)}
+                        r={Math.max(3, Math.min(5, Math.min(shape.width, shape.height) * 0.055))}
+                        fill={statusColor}
+                        stroke="#fff2d5"
+                        strokeWidth="1.2"
+                        pointerEvents="none"
+                      />
+                    </>
+                  )}
                 </g>
               );
             })}

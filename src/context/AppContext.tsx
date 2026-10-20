@@ -43,7 +43,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  PLOTS: 'terravista_plots_v6',
+  PLOTS: 'terravista_plots_v8',
   SAVED_PLOTS: 'terravista_saved_plots_v1',
   SAVED_PROJECTS: 'terravista_saved_projects_v1',
   BOOKINGS: 'terravista_bookings_v1',

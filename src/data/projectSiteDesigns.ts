@@ -198,6 +198,9 @@ export function applyProjectSiteDesigns(projects: Project[]): void {
     if (project.id === 'proj-bengaluru-emerald-enclave') {
       return;
     }
+    if (project.id === 'proj-mysuru-heritage-woods' || project.layoutConfig.imageryStatus === 'verified') {
+      return;
+    }
     const design = designs[project.id];
     if (!design) return;
     project.layoutConfig = {

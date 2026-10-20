@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Enclave Aerial Masterplan</title>
+  <style>
+    body { margin: 0; background: #07120a; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #fff; }
+    .wrapper { position: relative; width: 1024px; height: 576px; box-shadow: 0 15px 50px rgba(0,0,0,0.85); border-radius: 12px; overflow: hidden; border: 1px solid #1a3826; }
+    img { width: 1024px; height: 576px; display: block; }
+    svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .plot-hotspot {
+      fill: transparent;
+      stroke: transparent;
+      stroke-width: 2;
+      rx: 6;
+      cursor: pointer;
+      transition: all 0.2s ease-out;
+    }
+    .plot-hotspot:hover {
+      fill: rgba(234, 179, 8, 0.32);
+      stroke: #ffd700;
+      filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.7));
+    }
+    .plot-hotspot.is-selected {
+      fill: rgba(234, 179, 8, 0.42);
+      stroke: #ffffff;
+      stroke-width: 3;
+      filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.9));
+    }
+    .status-dot {
+      pointer-events: none;
+      transition: transform 0.2s;
+    }
+    .plot-group:hover .status-dot {
+      transform: scale(1.3);
+    }
+    #tooltip {
+      position: absolute;
+      display: none;
+      pointer-events: none;
+      background: rgba(12, 28, 20, 0.95);
+      border: 1px solid #c5a059;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      z-index: 50;
+      backdrop-filter: blur(8px);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <img src="/images/masterplan_enclave.jpg" alt="Masterplan Aerial View">
+    <svg id="svg" viewBox="0 0 1024 576"></svg>
+    <div id="tooltip"></div>
+  </div>
+
+  <script>
+    const PLOTS_DATA = [
+      { num: '14', x: 673, y: 62, w: 44, h: 32, status: 'SOLD', area: 2400, price: 6960000, facing: 'North-East', road: 'Riverside Place' },
+      { num: '13', x: 588, y: 86, w: 42, h: 30, status: 'SOLD', area: 2200, price: 6380000, facing: 'North', road: 'Riverside Place' },
+      { num: '88', x: 370, y: 93, w: 40, h: 30, status: 'AVAILABLE', area: 1800, price: 5220000, facing: 'North', road: 'Riverside Place' },
+      { num: '92', x: 215, y: 120, w: 42, h: 30, status: 'AVAILABLE', area: 2100, price: 6090000, facing: 'North-West', road: 'Riverside Place' },
+      { num: '84', x: 461, y: 122, w: 40, h: 28, status: 'RESERVED', area: 2000, price: 5800000, facing: 'South', road: 'Terrace View Crescent' },
+      { num: '85', x: 495, y: 122, w: 40, h: 28, status: 'RESERVED', area: 2200, price: 6380000, facing: 'South-East', road: 'Terrace View Crescent' },
+      { num: '93', x: 180, y: 141, w: 42, h: 30, status: 'AVAILABLE', area: 2200, price: 6380000, facing: 'North-West', road: 'Riverside Place' },
+      { num: '80', x: 345, y: 143, w: 42, h: 30, status: 'RESERVED', area: 2400, price: 6960000, facing: 'South', road: 'Terrace View Crescent' },
+      { num: '94', x: 160, y: 175, w: 44, h: 32, status: 'AVAILABLE', area: 2500, price: 7250000, facing: 'North-West', road: 'Riverside Place' },
+      { num: '52', x: 502, y: 178, w: 38, h: 28, status: 'AVAILABLE', area: 1800, price: 5220000, facing: 'South', road: 'Dune View Drive' },
+      { num: '49', x: 571, y: 178, w: 38, h: 28, status: 'AVAILABLE', area: 1800, price: 5220000, facing: 'South', road: 'Dune View Drive' },
+      { num: '48', x: 606, y: 178, w: 38, h: 28, status: 'AVAILABLE', area: 1800, price: 5220000, facing: 'South', road: 'Dune View Drive' },
+      { num: '47', x: 644, y: 195, w: 40, h: 28, status: 'AVAILABLE', area: 2000, price: 5800000, facing: 'South-East', road: 'Dune View Drive' },
+      { num: '35', x: 732, y: 205, w: 44, h: 32, status: 'AVAILABLE', area: 2400, price: 6960000, facing: 'North-East', road: 'Sea View Avenue' },
+      { num: '2', x: 317, y: 227, w: 42, h: 30, status: 'AVAILABLE', area: 2400, price: 6960000, facing: 'North-East', road: 'Hillside View Drive' },
+      { num: '34', x: 765, y: 227, w: 44, h: 28, status: 'AVAILABLE', area: 2200, price: 6380000, facing: 'West', road: 'Sea View Avenue' },
+      { num: '44', x: 544, y: 236, w: 40, h: 28, status: 'SOLD', area: 2200, price: 6380000, facing: 'South', road: 'Dune View Drive' },
+      { num: '45', x: 593, y: 236, w: 40, h: 28, status: 'SOLD', area: 2200, price: 6380000, facing: 'South', road: 'Dune View Drive' },
+      { num: '46', x: 641, y: 236, w: 40, h: 28, status: 'AVAILABLE', area: 2200, price: 6380000, facing: 'South', road: 'Dune View Drive' },
+      { num: '57', x: 423, y: 254, w: 42, h: 28, status: 'RESERVED', area: 2200, price: 6380000, facing: 'South', road: 'Valley View Drive' },
+      { num: '55', x: 483, y: 239, w: 42, h: 28, status: 'RESERVED', area: 2200, price: 6380000, facing: 'South', road: 'Valley View Drive' },
+      { num: '33', x: 765, y: 258, w: 44, h: 28, status: 'AVAILABLE', area: 2200, price: 6380000, facing: 'West', road: 'Sea View Avenue' },
+      { num: '43', x: 544, y: 280, w: 40, h: 28, status: 'AVAILABLE', area: 2200, price: 6380000, facing: 'North', road: 'Valley View Drive' },
+      { num: '42', x: 593, y: 280, w: 40, h: 28, status: 'AVAILABLE', area: 2200, price: 6380000, facing: 'North', road: 'Valley View Drive' },
+      { num: '41', x: 636, y: 280, w: 40, h: 28, status: 'AVAILABLE', area: 2200, price: 6380000, facing: 'North', road: 'Valley View Drive' },
+      { num: '39', x: 686, y: 288, w: 44, h: 30, status: 'AVAILABLE', area: 2400, price: 6960000, facing: 'North', road: 'Valley View Drive' },
+      { num: '32', x: 765, y: 288, w: 44, h: 28, status: 'AVAILABLE', area: 2200, price: 6380000, facing: 'West', road: 'Sea View Avenue' },
+      { num: '56', x: 467, y: 282, w: 42, h: 28, status: 'AVAILABLE', area: 2400, price: 6960000, facing: 'South', road: 'Valley View Drive' },
+      { num: '62', x: 386, y: 301, w: 42, h: 30, status: 'RESERVED', area: 2400, price: 6960000, facing: 'South-East', road: 'Valley View Drive' },
+      { num: '4', x: 265, y: 309, w: 40, h: 28, status: 'SOLD', area: 2200, price: 6380000, facing: 'East', road: 'Hillside View Drive' },
+      { num: '68', x: 330, y: 322, w: 42, h: 30, status: 'AVAILABLE', area: 2200, price: 6380000, facing: 'South-East', road: 'Hillside View Avenue' },
+      { num: '63', x: 421, y: 335, w: 42, h: 30, status: 'RESERVED', area: 2400, price: 6960000, facing: 'South-East', road: 'Valley View Drive' },
+      { num: '31', x: 765, y: 318, w: 44, h: 28, status: 'AVAILABLE', area: 2400, price: 6960000, facing: 'West', road: 'Sea View Avenue' },
+      { num: '77', x: 171, y: 343, w: 44, h: 32, status: 'SOLD', area: 2500, price: 7250000, facing: 'East', road: 'Terrace View Crescent' },
+      { num: '64', x: 467, y: 356, w: 44, h: 32, status: 'RESERVED', area: 2500, price: 7250000, facing: 'South-East', road: 'Valley View Drive' },
+      { num: '22', x: 541, y: 357, w: 40, h: 28, status: 'AVAILABLE', area: 2200, price: 6380000, facing: 'North', road: 'Valley View Drive' },
+      { num: '23', x: 593, y: 360, w: 40, h: 28, status: 'AVAILABLE', area: 2200, price: 6380000, facing: 'North', road: 'Valley View Drive' },
+      { num: '24', x: 639, y: 360, w: 40, h: 28, status: 'AVAILABLE', area: 2200, price: 6380000, facing: 'North', road: 'Valley View Drive' },
+      { num: '67', x: 368, y: 363, w: 44, h: 30, status: 'AVAILABLE', area: 2400, price: 6960000, facing: 'South-East', road: 'Estuary View Avenue' },
+      { num: '5', x: 251, y: 360, w: 40, h: 28, status: 'AVAILABLE', area: 2200, price: 6380000, facing: 'East', road: 'Terrace View Crescent' },
+      { num: '76', x: 171, y: 396, w: 44, h: 32, status: 'SOLD', area: 2600, price: 7540000, facing: 'East', road: 'Terrace View Crescent' },
+      { num: '66', x: 406, y: 404, w: 44, h: 30, status: 'AVAILABLE', area: 2400, price: 6960000, facing: 'South', road: 'Hillside View Drive' },
+      { num: '65', x: 463, y: 412, w: 44, h: 32, status: 'SOLD', area: 2400, price: 6960000, facing: 'North', road: 'Hillside View Drive' },
+      { num: '21', x: 542, y: 412, w: 40, h: 28, status: 'SOLD', area: 2200, price: 6380000, facing: 'North', road: 'Hillside View Drive' },
+      { num: '20', x: 588, y: 412, w: 40, h: 28, status: 'AVAILABLE', area: 2200, price: 6380000, facing: 'North', road: 'Hillside View Drive' },
+      { num: '28', x: 775, y: 406, w: 46, h: 32, status: 'AVAILABLE', area: 2800, price: 8120000, facing: 'West', road: 'Sea View Avenue' },
+      { num: '6', x: 284, y: 401, w: 42, h: 30, status: 'AVAILABLE', area: 2400, price: 6960000, facing: 'North-East', road: 'Estuary View Avenue' },
+      { num: '17', x: 715, y: 448, w: 44, h: 32, status: 'AVAILABLE', area: 2400, price: 6960000, facing: 'West', road: 'Sea View Avenue' },
+      { num: '9', x: 349, y: 472, w: 46, h: 32, status: 'AVAILABLE', area: 2500, price: 7250000, facing: 'North', road: 'Estuary View Avenue' },
+      { num: '11', x: 439, y: 498, w: 42, h: 30, status: 'SOLD', area: 2400, price: 6960000, facing: 'North', road: 'Hillside View Drive' },
+      { num: '12', x: 494, y: 498, w: 42, h: 30, status: 'SOLD', area: 2200, price: 6380000, facing: 'North', road: 'Hillside View Drive' },
+      { num: '15', x: 650, y: 513, w: 44, h: 30, status: 'AVAILABLE', area: 2200, price: 6380000, facing: 'North', road: 'Hillside View Drive' },
+      { num: '16', x: 710, y: 513, w: 44, h: 30, status: 'AVAILABLE', area: 2200, price: 6380000, facing: 'North', road: 'Hillside View Drive' },
+      { num: '75', x: 295, y: 513, w: 46, h: 32, status: 'AVAILABLE', area: 3000, price: 8700000, facing: 'East', road: 'Estuary View Avenue' },
+      { num: '10', x: 391, y: 510, w: 46, h: 32, status: 'AVAILABLE', area: 2500, price: 7250000, facing: 'North', road: 'Estuary View Avenue' }
+    ];
+
+    const svg = document.getElementById('svg');
+    const tooltip = document.getElementById('tooltip');
+
+    const STATUS_COLORS = {
+      AVAILABLE: '#22c55e',
+      RESERVED: '#f59e0b',
+      SOLD: '#ef4444'
+    };
+
+    PLOTS_DATA.forEach(plot => {
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('class', 'plot-group');
+
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', plot.x - plot.w / 2);
+      rect.setAttribute('y', plot.y - plot.h / 2);
+      rect.setAttribute('width', plot.w);
+      rect.setAttribute('height', plot.h);
+      rect.setAttribute('class', 'plot-hotspot');
+      rect.dataset.plotNumber = plot.num;
+
+      // Status indicator dot
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', plot.x + plot.w / 2 - 4);
+      circle.setAttribute('cy', plot.y - plot.h / 2 + 4);
+      circle.setAttribute('r', 3);
+      circle.setAttribute('fill', STATUS_COLORS[plot.status]);
+      circle.setAttribute('class', 'status-dot');
+
+      g.appendChild(rect);
+      g.appendChild(circle);
+
+      g.addEventListener('mouseenter', (e) => {
+        tooltip.style.display = 'block';
+        tooltip.innerHTML = `
+          <div style="font-weight:700; font-size:13px; color:#fff; margin-bottom:2px;">Plot #${plot.num}</div>
+          <div style="color:${STATUS_COLORS[plot.status]}; font-size:11px; font-weight:600; text-transform:uppercase;">${plot.status}</div>
+          <div style="color:#cbd5e1; font-size:11px; margin-top:3px;">${plot.area.toLocaleString()} sq.ft • ${plot.facing} Facing</div>
+          <div style="color:#f6d365; font-size:12px; font-weight:700; margin-top:2px;">₹${(plot.price / 100000).toFixed(2)} Lakhs</div>
+          <div style="color:#94a3b8; font-size:10px;">${plot.road}</div>
+        `;
+      });
+
+      g.addEventListener('mousemove', (e) => {
+        const wrapRect = document.querySelector('.wrapper').getBoundingClientRect();
+        tooltip.style.left = (e.clientX - wrapRect.left + 15) + 'px';
+        tooltip.style.top = (e.clientY - wrapRect.top + 15) + 'px';
+      });
+
+      g.addEventListener('mouseleave', () => {
+        tooltip.style.display = 'none';
+      });
+
+      g.addEventListener('click', () => {
+        document.querySelectorAll('.plot-hotspot').forEach(el => el.classList.remove('is-selected'));
+        rect.classList.add('is-selected');
+        alert(`Clicked Plot #${plot.num}!\nPrice: ₹${(plot.price/100000).toFixed(2)} L\nArea: ${plot.area} sq.ft\nStatus: ${plot.status}`);
+      });
+
+      svg.appendChild(g);
+    });
+  </script>
+</body>
+</html>

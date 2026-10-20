@@ -16,27 +16,25 @@ export const Logo: React.FC<LogoProps> = ({
 
   return (
     <div className={`flex items-center gap-2.5 select-none ${className}`}>
-      {/* Geometric Origami "N" Emblem from promoterdemo.lovable.app */}
+      {/* Navanext mark */}
       <svg
-        viewBox="0 0 28 28"
+        viewBox="0 0 40 40"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-6 h-6 shrink-0"
+        className="w-8 h-8 shrink-0"
       >
-        <polyline
-          points="5,22 5,6 21,22 21,6"
+        <path
+          d="M6 32V8L34 32V8M6 32L20 20L34 32"
           stroke={strokeColor}
-          strokeWidth="2.2"
-          strokeLinecap="round"
+          strokeWidth="2.5"
           strokeLinejoin="round"
         />
-        <circle cx="23" cy="22" r="1.5" fill="#c5a059" />
       </svg>
 
       <div className="flex flex-col text-left">
         <div className="flex items-baseline">
-          <span className={`font-sans font-medium text-[17px] tracking-tight lowercase leading-tight ${textColor}`}>
-            Navanext
+          <span className={`font-sans font-semibold text-[17px] tracking-tight lowercase leading-tight ${textColor}`}>
+            nava<span className="text-[#c5a059]">next</span>
           </span>
           <span className="text-[#c5a059] font-bold text-[17px] leading-none">.</span>
         </div>
