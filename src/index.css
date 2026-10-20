@@ -60,6 +60,30 @@
   will-change: opacity, transform;
 }
 
+@keyframes cabDriveAcross {
+  from {
+    left: 0%;
+    transform: translateX(-100%);
+  }
+  to {
+    left: 100%;
+    transform: translateX(-100%);
+  }
+}
+
+.cab-drive-car {
+  animation: cabDriveAcross 3.4s cubic-bezier(0.25, 0.7, 0.35, 1) both;
+  will-change: left;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cab-drive-car {
+    animation: none;
+    left: 100%;
+    transform: translateX(-100%);
+  }
+}
+
 /* Real Estate Shimmer & Micro-effects */
 @keyframes goldPulse {
   0%, 100% { opacity: 1; }

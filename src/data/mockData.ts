@@ -1,4 +1,5 @@
 import { City, Project, Plot } from '../types';
+import { applyProjectSiteDesigns, generateProjectPlots } from './projectSiteDesigns';
 
 export const CITIES: City[] = [
   {
@@ -147,7 +148,7 @@ export const PROJECTS: Project[] = [
     totalPlots: 42,
     approvalAuthority: 'DTCP & RERA Approved (Demo Layout)',
     approvalNumber: 'TN/01/Layout/2026/0491 (Demo ID)',
-    verificationBadge: 'Navanextventures Verified Masterplan (Demo)',
+    verificationBadge: 'Navanext Verified Masterplan (Demo)',
     description: 'Park Avenue is an idyllic master-planned plotted residential community situated right off the rapidly growing GST Road corridor. Thoughtfully engineered with 40ft and 30ft blacktop avenues, LED avenue lighting, underground electrical cabling, piped water provision for each individual plot, and a 2-acre landscaped central park with a luxury resident clubhouse.',
     roadConnectivity: [
       '3 Mins from GST Road Highway',
@@ -157,7 +158,7 @@ export const PROJECTS: Project[] = [
       '35 Mins to Chennai International Airport'
     ],
     developer: {
-      name: 'Navanextventures Signature Landholdings',
+      name: 'Navanext',
       experienceYears: 18,
       totalProjects: 24,
       headquarters: 'Chennai, Tamil Nadu',
@@ -480,7 +481,7 @@ export const PROJECTS: Project[] = [
       '30 Mins to Adyar & South Chennai'
     ],
     developer: {
-      name: 'Navanextventures Signature Landholdings',
+      name: 'Navanext',
       experienceYears: 18,
       totalProjects: 24,
       headquarters: 'Chennai, Tamil Nadu',
@@ -534,7 +535,7 @@ export const PROJECTS: Project[] = [
       '20 Mins to Medavakkam Junction'
     ],
     developer: {
-      name: 'Navanextventures Signature Landholdings',
+      name: 'Navanext',
       experienceYears: 18,
       totalProjects: 24,
       headquarters: 'Chennai, Tamil Nadu',
@@ -588,7 +589,7 @@ export const PROJECTS: Project[] = [
       '25 Mins to Tambaram'
     ],
     developer: {
-      name: 'Navanextventures Signature Landholdings',
+      name: 'Navanext',
       experienceYears: 18,
       totalProjects: 24,
       headquarters: 'Chennai, Tamil Nadu',
@@ -903,6 +904,8 @@ export const PROJECTS: Project[] = [
   }
 ];
 
+applyProjectSiteDesigns(PROJECTS);
+
 // Helper to generate realistic plots with precise layout coordinates for Park Avenue (42 plots)
 export function generateParkAvenuePlots(): Plot[] {
   const plots: Plot[] = [];
@@ -1149,70 +1152,9 @@ export function generateEmeraldEnclavePlots(): Plot[] {
   return plots;
 }
 
-// Generate plots for all other projects dynamically with authentic layout masterplan depth
+// Each project receives its own parcel geometry and masterplan treatment.
 export function generateGenericPlots(projectId: string, count: number, baseRate: number): Plot[] {
-  const plots: Plot[] = [];
-  const plotsPerRow = Math.ceil(count / 2);
-
-  // Available SVG bounds: 100 to 1040 (availableWidth = 940px)
-  const startX = 100;
-  const maxEndX = 1040;
-  const availableWidth = maxEndX - startX;
-
-  const gap = plotsPerRow > 16 ? 4 : (plotsPerRow > 12 ? 5 : 6);
-  const totalGaps = (plotsPerRow - 1) * gap;
-  const calculatedWidth = Math.floor((availableWidth - totalGaps) / plotsPerRow);
-  const plotWidth = Math.min(84, Math.max(42, calculatedWidth));
-
-  const totalRowWidth = plotsPerRow * plotWidth + totalGaps;
-  const actualStartX = startX + Math.max(0, Math.floor((availableWidth - totalRowWidth) / 2));
-
-  // Authentic architectural masterplan plot height:
-  // Central Avenue: y = 360 to 430.
-  // Row 1 directly abuts the North sidewalk (y: 130 to 352, height = 222px).
-  // Row 2 directly abuts the South sidewalk (y: 438 to 660, height = 222px).
-  const plotHeight = 222;
-
-  for (let i = 1; i <= count; i++) {
-    const isRow1 = i <= plotsPerRow;
-    const colIndex = isRow1 ? (i - 1) : (i - plotsPerRow - 1);
-    const xOffset = actualStartX + colIndex * (plotWidth + gap);
-    const yOffset = isRow1 ? 130 : 438;
-    const isCorner = i === 1 || i === plotsPerRow || i === (plotsPerRow + 1) || i === count;
-
-    // Realistic plot dimensions & areas for authentic masterplans:
-    const area = isCorner ? 2400 : (i % 3 === 0 ? 1500 : 1200);
-    const dimensions = isCorner ? "40' × 60'" : (i % 3 === 0 ? "30' × 50'" : "30' × 40'");
-    const price = area * baseRate;
-
-    let status: Plot['status'] = 'AVAILABLE';
-    if (i % 5 === 0) status = 'RESERVED';
-    if (i % 7 === 0) status = 'SOLD';
-
-    plots.push({
-      id: `plot-${projectId}-${i}`,
-      projectId,
-      plotNumber: `P-${i.toString().padStart(2, '0')}`,
-      dimensions,
-      areaSqFt: area,
-      facing: isRow1 ? 'South' : 'North',
-      price,
-      pricePerSqFt: baseRate,
-      status,
-      cornerPlot: isCorner,
-      parkFacing: isCorner || i % 4 === 0,
-      roadWidthFt: 40,
-      phase: isRow1 ? 'North Avenue Block' : 'South Avenue Block',
-      geometry: {
-        x: xOffset,
-        y: yOffset,
-        width: plotWidth,
-        height: plotHeight
-      },
-      notes: isCorner ? 'Prime Corner Villa Plot with Dual Road Frontage' : 'Direct Avenue Frontage Residential Plot'
-    });
-  }
-  return plots;
+  return generateProjectPlots(projectId, count, baseRate);
 }
 
 // Combined default plots across all projects
@@ -1239,11 +1181,11 @@ export const DEFAULT_PLOTS: Plot[] = [
 export const FREQUENT_QUESTIONS = [
   {
     question: 'What is the legal difference between DTCP, CMDA, and RERA approval in India?',
-    answer: 'DTCP (Directorate of Town and Country Planning) approves layouts outside metropolitan planning limits (like Greater Chennai), while CMDA (Chennai Metropolitan Development Authority) governs Chennai city boundaries. RERA (Real Estate Regulatory Authority) is a statutory consumer-protection mandate ensuring advertised amenities, open-space reservations (OSR), and project delivery deadlines are legally enforceable. On Navanextventures, every plotted development explicitly showcases its layout sanction number and approval credentials.'
+    answer: 'DTCP (Directorate of Town and Country Planning) approves layouts outside metropolitan planning limits (like Greater Chennai), while CMDA (Chennai Metropolitan Development Authority) governs Chennai city boundaries. RERA (Real Estate Regulatory Authority) is a statutory consumer-protection mandate ensuring advertised amenities, open-space reservations (OSR), and project delivery deadlines are legally enforceable. On Navanext, every plotted development explicitly showcases its layout sanction number and approval credentials.'
   },
   {
     question: 'How does the Complimentary Chauffeur Site Visit work?',
-    answer: 'Navanextventures provides 100% free, private chauffeur-driven AC cab pickup and return for customers and families inspecting our plotted communities. You choose your pickup point (home address, airport, or railway station) and preferred time slot. Our team coordinates directly with the project operator to ensure your cab arrives on time, with zero fare or payment checkout required.'
+    answer: 'Navanext provides 100% free, private chauffeur-driven AC cab pickup and return for customers and families inspecting our plotted communities. You choose your pickup point (home address, airport, or railway station) and preferred time slot. Our team coordinates directly with the project operator to ensure your cab arrives on time, with zero fare or payment checkout required.'
   },
   {
     question: 'Can I obtain a bank housing or composite plot loan for these plots?',
@@ -1254,8 +1196,8 @@ export const FREQUENT_QUESTIONS = [
     answer: 'Essential legal documents include: 1) Mother Deed and Parent Documents tracing 30-year chain of title, 2) Patta / Khata in the seller’s name, 3) DTCP/CMDA/HMDA Approved Layout Plan with individual plot sanction, 4) Encumbrance Certificate (EC) for minimum 30 years reflecting zero liabilities, 5) OSR (Open Space Reservation) gift deed to local Panchayat/Corporation for roads and parks.'
   },
   {
-    question: 'Are there any hidden costs or brokerage fees when booking through Navanextventures?',
-    answer: 'Zero brokerage! Navanextventures charges 0% commission to homebuyers. The plot prices displayed reflect the direct developer rates. Standard statutory government registration charges (stamp duty and registration fee) are calculated transparently in our EMI simulator.'
+    question: 'Are there any hidden costs or brokerage fees when booking through Navanext?',
+    answer: 'Zero brokerage! Navanext charges 0% commission to homebuyers. The plot prices displayed reflect the direct developer rates. Standard statutory government registration charges (stamp duty and registration fee) are calculated transparently in our EMI simulator.'
   }
 ];
 
@@ -1274,7 +1216,7 @@ export const DEMO_TESTIMONIALS = [
     customerName: 'Anand Vardhan Rao',
     location: 'Bengaluru (Senior Director)',
     projectName: 'Emerald Enclave, Devanahalli',
-    quote: 'Finding legally clear BIAAPA approved plots near the airport was a nightmare until I found Navanextventures. The EMI breakdown and transparent price per square foot helped me plan my finances down to the rupee.',
+    quote: 'Finding legally clear BIAAPA approved plots near the airport was a nightmare until I found Navanext. The EMI breakdown and transparent price per square foot helped me plan my finances down to the rupee.',
     rating: 5,
     tag: 'Demo Customer Experience'
   },

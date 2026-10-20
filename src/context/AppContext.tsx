@@ -136,7 +136,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [enquiries, setEnquiries] = useState<LeadEnquiry[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.ENQUIRIES);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed: unknown = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed as LeadEnquiry[];
+      }
     } catch {}
     return [
       {
@@ -306,7 +309,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `enq-${Date.now()}`,
       createdAt: new Date().toISOString()
     };
-    setEnquiries((prev) => [newEnquiry, ...prev]);
+    setEnquiries((prev) => [newEnquiry, ...(Array.isArray(prev) ? prev : [])]);
     showToast('Thank you! Your enquiry has been received.', 'success');
   };
 

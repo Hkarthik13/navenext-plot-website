@@ -2,16 +2,13 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { CITIES, FREQUENT_QUESTIONS } from '../data/mockData';
-import { formatPricePerSqFt } from '../utils/formatters';
-import { PlotSitePlan } from '../components/plots/PlotSitePlan';
-import type { Plot } from '../types';
+import { formatINR, formatPricePerSqFt } from '../utils/formatters';
 import {
   MapPin,
   Search,
   ArrowRight,
   ChevronDown,
   ChevronUp,
-  Compass,
   ShieldCheck,
   Car,
   CheckCircle2,
@@ -35,10 +32,19 @@ export const Home: React.FC = () => {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
 
-  // Flagship layout preview
+  // Project with the largest number of plots currently marked as sold.
   const flagshipProject = projects[0]; // Park Avenue
-  const flagshipPlots = plots.filter((p) => p.projectId === flagshipProject?.id);
-  const [selectedDemoPlot, setSelectedDemoPlot] = useState<Plot | null>(null);
+  const topSellingProject = projects
+    .map((project) => {
+      const projectPlots = plots.filter((plot) => plot.projectId === project.id);
+      return {
+        project,
+        soldCount: projectPlots.filter((plot) => plot.status === 'SOLD').length,
+        plotCount: projectPlots.length,
+        availableCount: projectPlots.filter((plot) => plot.status === 'AVAILABLE').length
+      };
+    })
+    .sort((a, b) => b.soldCount - a.soldCount || b.plotCount - a.plotCount)[0];
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,18 +58,16 @@ export const Home: React.FC = () => {
     <div className="font-sans-clean bg-[#faf8f5] text-[#1c2421]">
       {/* 1. Hero Section: Rich Real Estate Photographic Backdrop (Compact & Tight Gaps) */}
       <section className="relative pt-6 pb-10 sm:pt-8 sm:pb-12 md:pt-10 md:pb-14 overflow-hidden bg-[#0a1f17] text-white">
-        {/* Real Estate Plotted Landscape Photographic Background */}
+        {/* Illustrative aerial photo of a plotted residential development */}
         <div className="absolute inset-0">
           <img
-            src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=2400&q=85"
-            alt="Plotted Real Estate Landscape in Tamil Nadu"
-            className="w-full h-full object-cover object-center scale-102"
+            src="/images/hero-land-development.jpg"
+            alt="Aerial view of a residential land development with plots and internal roads"
+            className="w-full h-full object-cover object-[center_52%] scale-102"
           />
-          {/* Multi-layered Cinematic Emerald & Dark Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#061811]/95 via-[#0c2a1e]/85 to-[#071c14]/80" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0a1f17] via-transparent to-[#0a1f17]/60" />
-          {/* Subtle Architectural Blueprint / Plot Grid Overlay */}
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:44px_44px] pointer-events-none" />
+          {/* Keep the hero copy legible while letting the development photo read clearly. */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#061811]/78 via-[#0c2a1e]/48 to-[#071c14]/28" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0a1f17]/65 via-[#0a1f17]/10 to-[#0a1f17]/25" />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -80,7 +84,7 @@ export const Home: React.FC = () => {
             </h1>
 
             <p className="text-xs sm:text-sm md:text-base text-[#d3e3db] leading-relaxed max-w-2xl font-light">
-              A home to call your own. An investment in tomorrow. Discover possibilities with Navanextventures — where your aspirations find their ground. Explore sanctioned gated layouts with interactive 2D masterplans and complimentary private chauffeur inspections.
+              A home to call your own. An investment in tomorrow. Discover possibilities with Navanext — where your aspirations find their ground. Explore sanctioned gated layouts with interactive 2D masterplans and complimentary private chauffeur inspections.
             </p>
           </div>
 
@@ -247,43 +251,75 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* 3. Interactive Masterplan Section */}
-      <section className="py-20 bg-white border-y border-[#e2dacf] relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between mb-8 pb-4 border-b border-[#e5ece8] gap-2">
-            <div>
-              <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-[#7b998a] mb-1">
-                <Compass className="w-3.5 h-3.5 text-[#c5a059]" />
-                <span>Interactive Masterplan</span>
+      {/* 3. Top-selling development */}
+      {topSellingProject && (
+        <section className="border-y border-[#e2dacf] bg-white py-16 sm:py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-8 flex flex-col gap-3 border-b border-[#e5ece8] pb-5 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <div className="mb-1 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-[#7b998a]">
+                  <TrendingUp className="h-3.5 w-3.5 text-[#c5a059]" />
+                  <span>Most plots sold</span>
+                </div>
+                <h2 className="font-editorial text-2xl font-normal text-[#0f2e22] sm:text-3xl">Top-Selling Land</h2>
+                <p className="mt-1 text-xs text-[#55635c]">The development with the most plots currently marked sold.</p>
               </div>
-              <h2 className="font-editorial text-2xl sm:text-3xl font-normal text-[#0f2e22]">
-                Inspect Parcels on Layout
-              </h2>
-              <p className="text-xs text-[#55635c] mt-1">
-                Select any plot polygon on {flagshipProject.name} to view exact dimensions, facing, and live availability.
-              </p>
+              <Link
+                to={`/projects/${topSellingProject.project.slug}`}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-[#0f2e22] hover:underline"
+              >
+                <span>View project details</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
 
-            <Link
-              to={`/projects/${flagshipProject.slug}`}
-              className="text-xs font-semibold text-[#0f2e22] hover:underline flex items-center gap-1"
-            >
-              <span>View Full Dossier</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
+            <div className="grid overflow-hidden rounded-2xl border border-[#ded5c7] bg-[#faf8f4] shadow-sm md:grid-cols-[0.9fr_1.1fr]">
+              <div className="relative flex min-h-64 flex-col justify-between overflow-hidden bg-[#123326] p-6 text-white sm:p-8">
+                <div className="pointer-events-none absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(circle at 18% 24%, #8dac70 0 2px, transparent 3px), radial-gradient(circle at 78% 70%, #d3bd83 0 1px, transparent 2px)', backgroundSize: '34px 34px, 25px 25px' }} />
+                <div className="relative flex items-center justify-between gap-2">
+                  <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider">Top-selling development</span>
+                  <span className="text-xs text-[#d8b879]">{topSellingProject.project.cityName}</span>
+                </div>
+                <div className="relative mt-10">
+                  <div className="text-xs uppercase tracking-[.2em] text-[#c2d6cd]">Land / development</div>
+                  <div className="mt-2 max-w-lg font-editorial text-3xl leading-tight text-white sm:text-4xl">{topSellingProject.project.name}</div>
+                  <div className="mt-3 text-sm text-[#d6e0d8]">{topSellingProject.project.locality}</div>
+                </div>
+              </div>
 
-          {/* Masterplan visualizer */}
-          {flagshipProject && (
-            <PlotSitePlan
-              project={flagshipProject}
-              plots={flagshipPlots}
-              selectedPlot={selectedDemoPlot}
-              onSelectPlot={(plot) => setSelectedDemoPlot(plot)}
-            />
-          )}
-        </div>
-      </section>
+              <div className="flex flex-col justify-center p-6 sm:p-8">
+                <div className="text-[10px] font-semibold uppercase tracking-[.18em] text-[#7b998a]">Sales snapshot</div>
+                <div className="my-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="rounded-xl border border-[#e5ece8] bg-white p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-[#7b998a]">Plots sold</div>
+                    <div className="mt-1 text-lg font-semibold text-[#0f2e22]">{topSellingProject.soldCount}</div>
+                  </div>
+                  <div className="rounded-xl border border-[#e5ece8] bg-white p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-[#7b998a]">Total listed plots</div>
+                    <div className="mt-1 text-lg font-semibold text-[#0f2e22]">{topSellingProject.plotCount}</div>
+                  </div>
+                  <div className="rounded-xl border border-[#e5ece8] bg-white p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-[#7b998a]">Available now</div>
+                    <div className="mt-1 text-lg font-semibold text-[#0f2e22]">{topSellingProject.availableCount}</div>
+                  </div>
+                </div>
+
+                <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2 border-t border-[#e5ece8] pt-4">
+                  <span className="text-xs text-[#7b998a]">Starting price</span>
+                  <span className="font-editorial text-2xl text-[#0f2e22]">{formatINR(topSellingProject.project.minPrice)}</span>
+                </div>
+
+                <Link
+                  to={`/projects/${topSellingProject.project.slug}`}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#c5a059] px-5 py-3 text-xs font-semibold text-[#0a1f17] transition-colors hover:bg-[#d8b879] sm:w-fit"
+                >
+                  Explore this land <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* 4. Strategic Cities (Warm Regional Corridors) */}
       <section className="py-20 bg-[#faf8f4] border-b border-[#e2dacf]">
@@ -401,7 +437,7 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* 6. Signature Contact Banner from Navanextventures */}
+      {/* 6. Signature Contact Banner from Navanext */}
       <section className="py-14 bg-gradient-to-r from-[#113828] via-[#0d2d20] to-[#0a2318] text-white border-b border-[#1b4332]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-8">
           <div className="space-y-2 text-center lg:text-left">
@@ -428,7 +464,7 @@ export const Home: React.FC = () => {
               <span>+91 72003 86806</span>
             </a>
             <a
-              href="https://wa.me/917200386806?text=Hello%20Navanextventures%2C%20I%20am%20interested%20in%20exploring%20plots%20in%20Tamil%20Nadu.%20Please%20share%20the%20available%20locations%20and%20details."
+              href="https://wa.me/917200386806?text=Hello%20Navanext%2C%20I%20am%20interested%20in%20exploring%20plots%20in%20Tamil%20Nadu.%20Please%20share%20the%20available%20locations%20and%20details."
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#25D366] text-white text-xs font-semibold hover:bg-[#20ba59] transition-colors shadow-md"

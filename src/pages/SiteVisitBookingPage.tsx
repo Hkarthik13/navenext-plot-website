@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Breadcrumbs } from '../components/common/Breadcrumbs';
-import confetti from 'canvas-confetti';
 import {
   Car,
   MapPin,
@@ -148,10 +147,6 @@ export const SiteVisitBookingPage: React.FC = () => {
 
     setConfirmedBookingRef(newBooking.bookingReference);
     setIsSubmitted(true);
-
-    try {
-      confetti({ particleCount: 70, spread: 55, origin: { y: 0.6 } });
-    } catch {}
   };
 
   return (
@@ -189,6 +184,22 @@ export const SiteVisitBookingPage: React.FC = () => {
               <p className="text-xs text-[#55635c]">
                 Booking Reference: <strong className="font-mono text-[#0f2e22]">{confirmedBookingRef}</strong>
               </p>
+            </div>
+
+            <div
+              className="relative h-24 overflow-hidden rounded-xl border border-[#d9dfd2] bg-gradient-to-b from-[#e8efdf] to-[#cedbbd]"
+              role="img"
+              aria-label="A car driving along a road"
+            >
+              <div className="absolute inset-x-0 bottom-2 h-12 bg-gradient-to-b from-[#434d4a] to-[#29322f] shadow-inner">
+                <div className="absolute inset-x-0 top-1/2 border-t-2 border-dashed border-[#e5d39d]/80" />
+                <div className="cab-drive-car absolute inset-y-0 flex items-center text-[#c5a059]">
+                  <Car className="h-8 w-10 fill-[#c5a059] stroke-[#fff4d8] drop-shadow-md" />
+                </div>
+              </div>
+              <span className="absolute right-3 top-2 rounded-full border border-[#c5a059]/30 bg-white/80 px-2.5 py-1 text-[10px] font-semibold text-[#0f2e22]">
+                Free cab confirmed
+              </span>
             </div>
 
             <div className="p-4 rounded-lg bg-[#faf8f5] border border-gray-100 text-left text-xs space-y-2">

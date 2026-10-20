@@ -184,115 +184,88 @@ export const EmiCalculatorPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Input 1: Plot Price */}
+            {/* Manual plot price entry */}
             <div className="space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <label className="text-[#55635c] font-medium">Plot Purchase Price</label>
-                <div className="flex items-center gap-1 bg-[#faf8f5] px-2.5 py-1 rounded-md border border-[#c2d1c9]">
-                  <span className="font-bold text-[#0f2e22]">₹</span>
-                  <input
-                    type="number"
-                    value={plotPrice}
-                    onChange={(e) => setPlotPrice(Math.max(0, Number(e.target.value)))}
-                    className="w-24 text-right font-medium text-xs bg-transparent focus:outline-hidden text-[#0f2e22]"
-                  />
-                </div>
+              <label htmlFor="emi-plot-price" className="block text-xs text-[#55635c] font-medium">
+                Plot Purchase Price (INR)
+              </label>
+              <div className="flex items-center gap-2 bg-[#faf8f5] px-3 py-2.5 rounded-md border border-[#c2d1c9] focus-within:border-[#0f2e22]">
+                <span className="font-bold text-[#0f2e22]">&#8377;</span>
+                <input
+                  id="emi-plot-price"
+                  type="number"
+                  min="0"
+                  step="10000"
+                  inputMode="numeric"
+                  value={plotPrice}
+                  onChange={(e) => setPlotPrice(Math.max(0, Number(e.target.value) || 0))}
+                  className="w-full font-medium text-sm bg-transparent focus:outline-hidden text-[#0f2e22]"
+                />
               </div>
-              <input
-                type="range"
-                min="1000000"
-                max="25000000"
-                step="100000"
-                value={plotPrice}
-                onChange={(e) => setPlotPrice(Number(e.target.value))}
-                className="w-full accent-[#0f2e22] cursor-pointer"
-              />
-              <div className="flex justify-between text-[11px] text-[#7b998a]">
-                <span>₹10 L</span>
-                <span className="font-semibold text-[#0f2e22]">{formatINR(plotPrice)}</span>
-                <span>₹2.5 Cr</span>
-              </div>
+              <p className="text-[11px] text-[#7b998a]">Current plot value: <span className="font-semibold text-[#0f2e22]">{formatINR(plotPrice)}</span></p>
             </div>
 
-            {/* Input 2: Down Payment */}
+            {/* Manual down payment entry */}
             <div className="space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <label className="text-[#55635c] font-medium">Down Payment ({downPaymentPercent}%)</label>
-                <div className="font-semibold text-xs text-[#0f2e22] bg-[#faf8f5] px-2.5 py-1 rounded-md border border-[#c2d1c9]">
-                  {formatINR(downPaymentAmount)}
-                </div>
+              <div className="flex justify-between items-end gap-3">
+                <label htmlFor="emi-down-payment" className="text-xs text-[#55635c] font-medium">Down Payment (%)</label>
+                <span className="text-[11px] text-[#7b998a]">Amount: <strong className="text-[#0f2e22]">{formatINR(downPaymentAmount)}</strong></span>
               </div>
-              <input
-                type="range"
-                min="10"
-                max="60"
-                step="5"
-                value={downPaymentPercent}
-                onChange={(e) => setDownPaymentPercent(Number(e.target.value))}
-                className="w-full accent-[#0f2e22] cursor-pointer"
-              />
-              <div className="flex justify-between text-[11px] text-[#7b998a]">
-                <span>10%</span>
-                <span>20% (Standard)</span>
-                <span>60%</span>
+              <div className="flex items-center gap-2 bg-[#faf8f5] px-3 py-2.5 rounded-md border border-[#c2d1c9] focus-within:border-[#0f2e22]">
+                <input
+                  id="emi-down-payment"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  inputMode="decimal"
+                  value={downPaymentPercent}
+                  onChange={(e) => setDownPaymentPercent(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                  className="w-full font-medium text-sm bg-transparent focus:outline-hidden text-[#0f2e22]"
+                />
+                <span className="text-sm font-semibold text-[#0f2e22]">%</span>
               </div>
+              <p className="text-[11px] text-[#7b998a]">Enter any down payment from 0% to 100%.</p>
             </div>
 
-            {/* Input 3: Interest Rate */}
+            {/* Manual interest rate entry */}
             <div className="space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <label className="text-[#55635c] font-medium">Interest Rate (% p.a.)</label>
-                <div className="flex items-center gap-1 bg-[#faf8f5] px-2.5 py-1 rounded-md border border-[#c2d1c9]">
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="1"
-                    max="18"
-                    value={interestRate}
-                    onChange={(e) => setInterestRate(Number(e.target.value))}
-                    className="w-12 text-right font-medium text-xs bg-transparent focus:outline-hidden text-[#0f2e22]"
-                  />
-                  <span className="text-[#0f2e22] text-xs font-semibold">%</span>
-                </div>
+              <label htmlFor="emi-interest-rate" className="block text-xs text-[#55635c] font-medium">Interest Rate (% per year)</label>
+              <div className="flex items-center gap-2 bg-[#faf8f5] px-3 py-2.5 rounded-md border border-[#c2d1c9] focus-within:border-[#0f2e22]">
+                <input
+                  id="emi-interest-rate"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  inputMode="decimal"
+                  value={interestRate}
+                  onChange={(e) => setInterestRate(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                  className="w-full font-medium text-sm bg-transparent focus:outline-hidden text-[#0f2e22]"
+                />
+                <span className="text-sm font-semibold text-[#0f2e22]">%</span>
               </div>
-              <input
-                type="range"
-                min="6.5"
-                max="14.0"
-                step="0.1"
-                value={interestRate}
-                onChange={(e) => setInterestRate(Number(e.target.value))}
-                className="w-full accent-[#0f2e22] cursor-pointer"
-              />
-              <div className="flex justify-between text-[11px] text-[#7b998a]">
-                <span>6.5%</span>
-                <span className="font-semibold text-[#0f2e22]">{interestRate}%</span>
-                <span>14.0%</span>
-              </div>
+              <p className="text-[11px] text-[#7b998a]">Enter the annual interest rate; 0% calculates an interest-free loan.</p>
             </div>
 
-            {/* Input 4: Tenure */}
+            {/* Manual tenure entry */}
             <div className="space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <label className="text-[#55635c] font-medium">Tenure</label>
-                <div className="font-semibold text-xs text-[#0f2e22] bg-[#faf8f5] px-2.5 py-1 rounded-md border border-[#c2d1c9]">
-                  {tenureYears} Years ({tenureYears * 12} Months)
-                </div>
+              <label htmlFor="emi-tenure-years" className="block text-xs text-[#55635c] font-medium">Loan Tenure (years)</label>
+              <div className="flex items-center gap-2 bg-[#faf8f5] px-3 py-2.5 rounded-md border border-[#c2d1c9] focus-within:border-[#0f2e22]">
+                <input
+                  id="emi-tenure-years"
+                  type="number"
+                  min="1"
+                  max="30"
+                  step="1"
+                  inputMode="numeric"
+                  value={tenureYears}
+                  onChange={(e) => setTenureYears(Math.min(30, Math.max(1, Number(e.target.value) || 1)))}
+                  className="w-full font-medium text-sm bg-transparent focus:outline-hidden text-[#0f2e22]"
+                />
+                <span className="text-sm font-semibold text-[#0f2e22]">years</span>
               </div>
-              <input
-                type="range"
-                min="1"
-                max="30"
-                step="1"
-                value={tenureYears}
-                onChange={(e) => setTenureYears(Number(e.target.value))}
-                className="w-full accent-[#0f2e22] cursor-pointer"
-              />
-              <div className="flex justify-between text-[11px] text-[#7b998a]">
-                <span>1 Yr</span>
-                <span>15 Yrs</span>
-                <span>30 Yrs</span>
-              </div>
+              <p className="text-[11px] text-[#7b998a]">{tenureYears * 12} monthly payments</p>
             </div>
 
             {/* Statutory Charges Option */}

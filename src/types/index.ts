@@ -1,4 +1,4 @@
-export type PlotStatus = 'AVAILABLE' | 'RESERVED' | 'SOLD';
+export type PlotStatus = 'AVAILABLE' | 'RESERVED' | 'SOLD' | 'UNAVAILABLE';
 
 export type PlotFacing = 
   | 'North' 
@@ -24,7 +24,7 @@ export interface Plot {
   plotNumber: string;
   dimensions: string; // e.g. "30' × 40'"
   areaSqFt: number;
-  facing: PlotFacing;
+  facing: PlotFacing | null;
   price: number; // in INR
   pricePerSqFt: number;
   status: PlotStatus;
@@ -79,6 +79,7 @@ export interface LayoutConfig {
     width: number;
     height: number;
     label: string;
+    kind?: 'park' | 'water' | 'plaza';
   }[];
   facilities: {
     id: string;
@@ -93,6 +94,32 @@ export interface LayoutConfig {
     x: number;
     y: number;
     label: string;
+  };
+  aerialImage?: string;
+  /** Set to verified only when imagery is from this development and licensed for use. */
+  imageryStatus?: 'verified' | 'illustrative' | 'missing';
+  /** Set to verified only when parcel coordinates match an approved site survey. */
+  geometryStatus?: 'verified' | 'illustrative' | 'missing';
+  /** Optional SVG polygon points for the surveyed site boundary in this viewBox. */
+  siteBoundary?: string;
+  themeTitle?: string;
+  isRealisticMasterplan?: boolean;
+  palette?: {
+    groundStart: string;
+    groundMid: string;
+    groundEnd: string;
+    lotStart: string;
+    lotMid: string;
+    lotEnd: string;
+    road: string;
+    roadEdge: string;
+    centerline: string;
+    park: string;
+    parkBorder: string;
+    water: string;
+    boundary: string;
+    accent: string;
+    grass: string;
   };
 }
 

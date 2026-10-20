@@ -17,11 +17,11 @@ export const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-[#163e2f]">
           {/* Brand */}
           <div className="space-y-3">
-            <Link to="/" className="inline-block" aria-label="Navanextventures Home">
+            <Link to="/" className="inline-block" aria-label="Navanext Home">
               <Logo isLight={false} />
             </Link>
             <p className="text-xs text-[#8fa89b] leading-relaxed">
-              A home to call your own. An investment in tomorrow. Discover possibilities with Navanextventures — where your aspirations find their ground.
+              A home to call your own. An investment in tomorrow. Discover possibilities with Navanext — where your aspirations find their ground.
             </p>
             <div className="text-[11px] text-[#c5a059] font-medium tracking-wide">
               உங்கள் கனவுக்கு, ஒரு புதிய தொடக்கம்.
@@ -111,7 +111,7 @@ export const Footer: React.FC = () => {
                 <span>navanextventures@gmail.com</span>
               </a>
               <a
-                href="https://wa.me/917200386806?text=Hello%20Navanextventures%2C%20I%20am%20interested%20in%20exploring%20plots%20in%20Tamil%20Nadu.%20Please%20share%20the%20available%20locations%20and%20details."
+                href="https://wa.me/917200386806?text=Hello%20Navanext%2C%20I%20am%20interested%20in%20exploring%20plots%20in%20Tamil%20Nadu.%20Please%20share%20the%20available%20locations%20and%20details."
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors"
@@ -138,7 +138,7 @@ export const Footer: React.FC = () => {
 
         {/* Bottom Disclaimer & Copyright */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#55635c]">
-          <p>© {new Date().getFullYear()} Navanextventures. Land for living. Possibilities for tomorrow.</p>
+          <p>© {new Date().getFullYear()} Navanext. Land for living. Possibilities for tomorrow.</p>
           <div className="flex items-center space-x-4">
             <Link to="/contact" className="hover:text-[#c2d1c9]">
               Contact

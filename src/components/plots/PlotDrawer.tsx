@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Plot, Project } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { StatusBadge } from '../common/Badge';
@@ -45,8 +46,18 @@ export const PlotDrawer: React.FC<PlotDrawerProps> = ({
   const [copied, setCopied] = useState(false);
   const [showFullDetails, setShowFullDetails] = useState(false);
   const [showEnquiryForm, setShowEnquiryForm] = useState(false);
+  const [enquirySent, setEnquirySent] = useState(false);
   const [enquiryName, setEnquiryName] = useState('');
   const [enquiryPhone, setEnquiryPhone] = useState('');
+  const [enquiryError, setEnquiryError] = useState('');
+
+  React.useEffect(() => {
+    setShowEnquiryForm(false);
+    setEnquirySent(false);
+    setEnquiryName('');
+    setEnquiryPhone('');
+    setEnquiryError('');
+  }, [plot?.id]);
 
   if (!plot) return null;
 
@@ -62,31 +73,43 @@ export const PlotDrawer: React.FC<PlotDrawerProps> = ({
     });
   };
 
-  const handleEnquirySubmit = (e: React.FormEvent) => {
+  const handleEnquirySubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!enquiryName || !enquiryPhone) {
-      showToast('Please provide your name and phone number', 'warning');
+    const formData = new FormData(e.currentTarget);
+    const submittedName = String(formData.get('customerName') || enquiryName).trim();
+    const submittedPhone = String(formData.get('customerPhone') || enquiryPhone).trim();
+    const cleanPhone = submittedPhone.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+    if (!submittedName) {
+      setEnquiryError('Please enter your name.');
       return;
     }
-    submitEnquiry({
-      name: enquiryName,
-      phone: enquiryPhone,
-      email: '',
-      projectId: project.id,
-      projectName: project.name,
-      plotNumber: plot.plotNumber,
-      type: 'plot_inquiry',
-      message: `Enquiry for Plot #${plot.plotNumber} (${plot.dimensions}, ${plot.areaSqFt} sq.ft)`
-    });
-    setShowEnquiryForm(false);
-    setEnquiryName('');
-    setEnquiryPhone('');
-    showToast('Enquiry submitted successfully', 'success');
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+      setEnquiryError('Enter a valid 10-digit Indian mobile number.');
+      return;
+    }
+    try {
+      submitEnquiry({
+        name: submittedName,
+        phone: submittedPhone,
+        email: '',
+        projectId: project.id,
+        projectName: project.name,
+        plotNumber: plot.plotNumber,
+        type: 'plot_inquiry',
+        message: `Enquiry for Plot #${plot.plotNumber} (${plot.dimensions}, ${plot.areaSqFt} sq.ft, ${plot.status.toLowerCase()})`
+      });
+      setEnquiryError('');
+      setEnquirySent(true);
+    } catch (error) {
+      console.error('Plot enquiry submission failed:', error);
+      setEnquiryError('Enquiry could not be sent. Please try again.');
+    }
   };
 
   const isAvailable = plot.status === 'AVAILABLE';
   const isReserved = plot.status === 'RESERVED';
   const isSold = plot.status === 'SOLD';
+  const isUnavailable = plot.status === 'UNAVAILABLE';
 
   return (
     <>
@@ -173,8 +196,8 @@ export const PlotDrawer: React.FC<PlotDrawerProps> = ({
               <Compass className="w-3.5 h-3.5 text-[#c5a059]" />
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-semibold text-white">{plot.facing}</span>
-              {(plot.facing.includes('East') || plot.facing.includes('North')) && (
+              <span className="font-semibold text-white">{plot.facing ?? 'To be confirmed'}</span>
+              {plot.facing && (plot.facing.includes('East') || plot.facing.includes('North')) && (
                 <span className="text-[9px] bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold px-1.5 py-0.2 rounded">
                   Vastu
                 </span>
@@ -219,6 +242,15 @@ export const PlotDrawer: React.FC<PlotDrawerProps> = ({
           </div>
         )}
 
+        {isUnavailable && (
+          <div className="p-3 bg-slate-950/40 rounded-lg border border-slate-700/60 text-slate-200 text-xs">
+            <div className="font-semibold mb-0.5 text-slate-100">Plot Unavailable</div>
+            <p className="text-slate-300/80 leading-relaxed text-[11px]">
+              This plot is not currently offered for booking. Contact Navanext to confirm its status.
+            </p>
+          </div>
+        )}
+
         {/* Progressive Disclosure: Additional Details */}
         <div className="pt-1">
           <button
@@ -253,55 +285,23 @@ export const PlotDrawer: React.FC<PlotDrawerProps> = ({
           )}
         </div>
 
-        {/* Quick Enquiry Form (if expanded) */}
-        {showEnquiryForm && (
-          <form onSubmit={handleEnquirySubmit} className="p-3.5 bg-[#12241c] rounded-lg border border-[#1f3a2d] space-y-2.5">
-            <div className="font-editorial text-sm font-medium text-white">
-              Instant Enquiry for Plot #{plot.plotNumber}
-            </div>
-            <div>
-              <label className="text-[10px] text-[#8fa89b] block mb-1">Your Full Name</label>
-              <input
-                type="text"
-                required
-                value={enquiryName}
-                onChange={(e) => setEnquiryName(e.target.value)}
-                placeholder="Full Name"
-                className="w-full text-xs p-2 rounded-md bg-[#0a1611] text-white border border-[#234737] focus:outline-hidden focus:border-[#c5a059]"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-[#8fa89b] block mb-1">Mobile Number</label>
-              <input
-                type="tel"
-                required
-                value={enquiryPhone}
-                onChange={(e) => setEnquiryPhone(e.target.value)}
-                placeholder="+91 98765 43210"
-                className="w-full text-xs p-2 rounded-md bg-[#0a1611] text-white border border-[#234737] focus:outline-hidden focus:border-[#c5a059]"
-              />
-            </div>
-            <div className="flex gap-2 pt-1">
-              <button
-                type="submit"
-                className="flex-1 py-1.5 text-xs font-semibold text-[#0a1f17] bg-[#c5a059] hover:bg-[#d8b879] rounded-md transition-colors"
-              >
-                Send Request
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowEnquiryForm(false)}
-                className="py-1.5 px-3 text-xs text-[#8fa89b] bg-[#162e24] rounded-md hover:text-white transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
       </div>
 
       {/* Bottom Sticky Action Bar */}
       <div className="p-4 bg-[#0f221a] border-t border-[#1b3327] space-y-2 shrink-0">
+        <button
+          type="button"
+          onClick={() => {
+            setEnquirySent(false);
+            setEnquiryError('');
+            setShowEnquiryForm(true);
+          }}
+          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-semibold text-xs text-[#0a1f17] bg-[#c5a059] hover:bg-[#d8b879] transition-colors shadow-md"
+        >
+          <MessageSquare className="w-3.5 h-3.5" />
+          <span>Enquire about Plot #{plot.plotNumber}</span>
+        </button>
+
         {isAvailable ? (
           <>
             <Link
@@ -315,7 +315,7 @@ export const PlotDrawer: React.FC<PlotDrawerProps> = ({
             <div className="grid grid-cols-3 gap-2">
               <a
                 href={`https://wa.me/917200386806?text=${encodeURIComponent(
-                  `Hello Navanextventures, I am interested in Plot #${plot.plotNumber} (${plot.areaSqFt} sq.ft, ${plot.facing} facing) in ${project.name}. Please share layout drawing and price breakdown.`
+                  `Hello Navanext, I am interested in Plot #${plot.plotNumber} (${plot.areaSqFt} sq.ft, ${plot.facing ?? 'facing to be confirmed'}) in ${project.name}. Please share layout drawing and price breakdown.`
                 )}`}
                 target="_blank"
                 rel="noreferrer"
@@ -361,13 +361,6 @@ export const PlotDrawer: React.FC<PlotDrawerProps> = ({
           <>
             <button
               type="button"
-              onClick={() => setShowEnquiryForm(true)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-semibold text-xs text-[#0a1f17] bg-[#c5a059] hover:bg-[#d8b879] transition-colors"
-            >
-              <span>Join Priority Waitlist</span>
-            </button>
-            <button
-              type="button"
               onClick={() => {
                 if (onOpenEmiModal) onOpenEmiModal(plot);
                 else navigate(`/emi-calculator?price=${plot.price}&plotNumber=${plot.plotNumber}`);
@@ -377,7 +370,7 @@ export const PlotDrawer: React.FC<PlotDrawerProps> = ({
               Estimate EMI & Amortization
             </button>
           </>
-        ) : (
+        ) : isSold ? (
           <div className="space-y-1">
             <button
               disabled
@@ -389,8 +382,116 @@ export const PlotDrawer: React.FC<PlotDrawerProps> = ({
               Please choose any available (green) plot on the layout.
             </p>
           </div>
+        ) : (
+          <div className="space-y-1">
+            <button
+              disabled
+              className="w-full py-2 px-4 rounded-lg font-medium text-xs text-gray-500 bg-[#16231c] cursor-not-allowed border border-[#23382c]"
+            >
+              Plot Unavailable (Booking Disabled)
+            </button>
+            <p className="text-[10px] text-center text-[#7b998a]">
+              Please contact Navanext to confirm availability.
+            </p>
+          </div>
         )}
       </div>
+
+      {showEnquiryForm && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowEnquiryForm(false);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="plot-enquiry-title"
+            className="w-full max-w-sm rounded-xl border border-[#294536] bg-[#0c1813] p-5 text-white shadow-2xl"
+          >
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h3 id="plot-enquiry-title" className="font-editorial text-xl">Enquire about Plot #{plot.plotNumber}</h3>
+                <p className="mt-1 text-xs text-[#8fa89b]">Share your contact details and our team will get in touch.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEnquiryForm(false)}
+                className="rounded-md p-1.5 text-[#8fa89b] hover:bg-[#162e24] hover:text-white"
+                aria-label="Close enquiry form"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {enquirySent ? (
+              <div aria-live="polite" className="py-4 text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-[#d8b879]/40 bg-[#c5a059]/15 text-4xl" role="img" aria-label="Plot enquiry sent">
+                  🏡
+                </div>
+                <p className="text-lg font-semibold text-white">Details sent!</p>
+                <p className="mt-1 text-sm text-[#8fa89b]">Your enquiry for Plot #{plot.plotNumber} has been sent. Our team will contact you.</p>
+                <button
+                  type="button"
+                  onClick={() => setShowEnquiryForm(false)}
+                  className="mt-5 w-full rounded-lg bg-[#c5a059] py-3 text-sm font-semibold text-[#0a1f17] transition-colors hover:bg-[#d8b879]"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleEnquirySubmit} className="space-y-3">
+                <div>
+                  <label htmlFor="plot-enquiry-name" className="mb-1 block text-xs text-[#c2d1c9]">Your name</label>
+                  <input
+                    id="plot-enquiry-name"
+                    name="customerName"
+                    type="text"
+                    autoComplete="name"
+                    autoFocus
+                    required
+                    value={enquiryName}
+                    onChange={(event) => {
+                      setEnquiryName(event.target.value);
+                      setEnquiryError('');
+                    }}
+                    placeholder="Enter your full name"
+                    className="w-full rounded-lg border border-[#234737] bg-[#0a1611] p-3 text-sm text-white outline-none focus:border-[#c5a059]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="plot-enquiry-phone" className="mb-1 block text-xs text-[#c2d1c9]">Mobile number</label>
+                  <input
+                    id="plot-enquiry-phone"
+                    name="customerPhone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    required
+                    value={enquiryPhone}
+                    onChange={(event) => {
+                      setEnquiryPhone(event.target.value);
+                      setEnquiryError('');
+                    }}
+                    placeholder="+91 98765 43210"
+                    className="w-full rounded-lg border border-[#234737] bg-[#0a1611] p-3 text-sm text-white outline-none focus:border-[#c5a059]"
+                  />
+                  <p className="mt-1 text-[10px] text-[#7b998a]">Enter a valid 10-digit Indian mobile number.</p>
+                </div>
+              {enquiryError && <p role="alert" className="text-xs text-rose-300">{enquiryError}</p>}
+                <button
+                  type="submit"
+                  className="w-full rounded-lg bg-[#c5a059] py-3 text-sm font-semibold text-[#0a1f17] transition-colors hover:bg-[#d8b879]"
+                >
+                  Send enquiry
+                </button>
+              </form>
+            )}
+          </section>
+        </div>,
+        document.fullscreenElement || document.body
+      )}
     </div>
     </>
   );

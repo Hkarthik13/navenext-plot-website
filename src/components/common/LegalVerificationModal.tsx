@@ -110,7 +110,7 @@ export const LegalVerificationModal: React.FC<LegalVerificationModalProps> = ({
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 flex items-start gap-3 text-emerald-950">
             <Info className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
             <p className="leading-relaxed">
-              Every plotted enclave hosted on Navanextventures undergoes rigorous multi-tier legal vetting by high court property advocates before being cataloged. All parent documents are available for inspection.
+              Every plotted enclave hosted on Navanext undergoes rigorous multi-tier legal vetting by high court property advocates before being cataloged. All parent documents are available for inspection.
             </p>
           </div>
 

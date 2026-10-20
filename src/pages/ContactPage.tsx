@@ -56,7 +56,7 @@ export const ContactPage: React.FC = () => {
               Direct Assistance
             </span>
             <h1 className="font-display font-bold text-3xl sm:text-4xl text-white mt-1">
-              Connect with Navanextventures
+              Connect with Navanext
             </h1>
             <p className="text-xs sm:text-sm text-[#c2d1c9] mt-2 leading-relaxed">
               Have questions regarding layout approvals, parent deed verifications, or need help scheduling a private site visit cab? Our advisory team is at your service.
@@ -78,7 +78,7 @@ export const ContactPage: React.FC = () => {
                   Message Received!
                 </h3>
                 <p className="text-xs text-[#55635c] max-w-sm mx-auto">
-                  Thank you, {name}. A dedicated Navanextventures plotted property advisor will reach out to you within 2 business hours.
+                  Thank you, {name}. A dedicated Navanext plotted property advisor will reach out to you within 2 business hours.
                 </p>
                 <button
                   type="button"
@@ -205,7 +205,7 @@ export const ContactPage: React.FC = () => {
               </p>
 
               <a
-                href="https://wa.me/917200386806?text=Hello%20Navanextventures%2C%20I%20am%20interested%20in%20exploring%20plots%20in%20Tamil%20Nadu.%20Please%20share%20the%20available%20locations%20and%20details."
+                href="https://wa.me/917200386806?text=Hello%20Navanext%2C%20I%20am%20interested%20in%20exploring%20plots%20in%20Tamil%20Nadu.%20Please%20share%20the%20available%20locations%20and%20details."
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl text-xs font-semibold text-[#0a1f17] bg-[#d8b879] hover:bg-[#c5a059] transition-all"
@@ -223,7 +223,7 @@ export const ContactPage: React.FC = () => {
 
               <div className="space-y-3 divide-y divide-gray-100">
                 <div className="pt-2 space-y-1">
-                  <div className="font-bold text-[#0f2e22]">Navanextventures Headquarters</div>
+                  <div className="font-bold text-[#0f2e22]">Navanext Headquarters</div>
                   <p className="text-[#55635c]">Tamil Nadu, India</p>
                   <p className="text-[11px] text-[#c5a059] font-medium">உங்கள் கனவுக்கு, ஒரு புதிய தொடக்கம்.</p>
                   <div className="text-[11px] text-[#7b998a]">Mon – Sat: 9:00 AM – 7:30 PM IST</div>

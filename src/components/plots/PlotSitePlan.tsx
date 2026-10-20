@@ -1,14 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Plot, Project } from '../../types';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Maximize2, RotateCcw, Search, Sparkles, ZoomIn, ZoomOut } from 'lucide-react';
+import { Plot, PlotGeometry, PlotStatus, Project } from '../../types';
 import { formatINR } from '../../utils/formatters';
-import {
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
-  RotateCcw,
-  Sparkles
-} from 'lucide-react';
-
 import { PlotDrawer } from './PlotDrawer';
 
 interface PlotSitePlanProps {
@@ -20,6 +13,122 @@ interface PlotSitePlanProps {
   onOpenEmiModal?: (plot: Plot) => void;
 }
 
+interface ParcelShape {
+  points: string;
+  centerX: number;
+  centerY: number;
+  right: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+const STATUS_COLORS: Record<PlotStatus, string> = {
+  AVAILABLE: '#21b873',
+  RESERVED: '#efaa25',
+  SOLD: '#e45b55',
+  UNAVAILABLE: '#a0aaa4'
+};
+
+const STATUS_LABELS: Record<PlotStatus, string> = {
+  AVAILABLE: 'Available',
+  RESERVED: 'Reserved',
+  SOLD: 'Sold',
+  UNAVAILABLE: 'Unavailable'
+};
+
+const STATUS_FILL: Record<PlotStatus, string> = {
+  AVAILABLE: '#128c43',
+  RESERVED: '#c87205',
+  SOLD: '#c92525',
+  UNAVAILABLE: '#78827d'
+};
+
+const DEFAULT_PALETTE = {
+  groundStart: '#536747', groundMid: '#3b5138', groundEnd: '#263d30',
+  lotStart: '#168f47', lotMid: '#117d3d', lotEnd: '#0d6d36',
+  road: '#293234', roadEdge: '#b2b6a7', centerline: '#d3d0b9',
+  park: '#456b43', parkBorder: '#c3d0a5', water: '#56777c',
+  boundary: '#eee5c9', accent: '#d0ae67', grass: '#b9c69c'
+};
+
+const hasFiniteGeometry = (geometry: PlotGeometry | undefined) => {
+  if (!geometry) return false;
+  return Number.isFinite(geometry.x) &&
+    Number.isFinite(geometry.y) &&
+    Number.isFinite(geometry.width) &&
+    Number.isFinite(geometry.height) &&
+    geometry.width > 0 &&
+    geometry.height > 0;
+};
+
+function getParcelShape(geometry: PlotGeometry): ParcelShape | null {
+  if (!hasFiniteGeometry(geometry)) return null;
+
+  const rect = {
+    x: geometry.x,
+    y: geometry.y,
+    width: geometry.width,
+    height: geometry.height
+  };
+
+  if (!geometry.points) {
+    return {
+      points: rect.x + ',' + rect.y + ' ' + (rect.x + rect.width) + ',' + rect.y + ' ' +
+        (rect.x + rect.width) + ',' + (rect.y + rect.height) + ' ' + rect.x + ',' + (rect.y + rect.height),
+      centerX: rect.x + rect.width / 2,
+      centerY: rect.y + rect.height / 2,
+      right: rect.x + rect.width,
+      top: rect.y,
+      width: rect.width,
+      height: rect.height
+    };
+  }
+
+  const vertices = Array.from(geometry.points.matchAll(/(-?\d*\.?\d+)[,\s]+(-?\d*\.?\d+)/g))
+    .map((match) => ({ x: Number(match[1]), y: Number(match[2]) }))
+    .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+
+  if (vertices.length < 3) return null;
+
+  let twiceArea = 0;
+  let centerX = 0;
+  let centerY = 0;
+  vertices.forEach((point, index) => {
+    const next = vertices[(index + 1) % vertices.length];
+    const cross = point.x * next.y - next.x * point.y;
+    twiceArea += cross;
+    centerX += (point.x + next.x) * cross;
+    centerY += (point.y + next.y) * cross;
+  });
+
+  if (Math.abs(twiceArea) < 0.001) return null;
+  centerX /= 3 * twiceArea;
+  centerY /= 3 * twiceArea;
+
+  const xs = vertices.map((point) => point.x);
+  const ys = vertices.map((point) => point.y);
+  const left = Math.min(...xs);
+  const top = Math.min(...ys);
+  const right = Math.max(...xs);
+  const bottom = Math.max(...ys);
+
+  return {
+    points: vertices.map((point) => point.x + ',' + point.y).join(' '),
+    centerX,
+    centerY,
+    right,
+    top,
+    width: right - left,
+    height: bottom - top
+  };
+}
+
+const roadCenter = (x: number, y: number, width: number, height: number, vertical: boolean) =>
+  vertical
+    ? { x1: x + width / 2, y1: y + 5, x2: x + width / 2, y2: y + height - 5 }
+    : { x1: x + 5, y1: y + height / 2, x2: x + width - 5, y2: y + height / 2 };
+
 export const PlotSitePlan: React.FC<PlotSitePlanProps> = ({
   project,
   plots,
@@ -28,890 +137,380 @@ export const PlotSitePlan: React.FC<PlotSitePlanProps> = ({
   className = '',
   onOpenEmiModal
 }) => {
-  // Pan and Zoom State
-  const [zoomLevel, setZoomLevel] = useState<number>(1);
-  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-
-  // Filters State
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [facingFilter, setFacingFilter] = useState<string>('ALL');
-  const [cornerOnly, setCornerOnly] = useState<boolean>(false);
-  const [hoveredPlot, setHoveredPlot] = useState<Plot | null>(null);
-  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
-
-  // Zoom controls
-  const handleZoomIn = () => setZoomLevel((prev) => Math.min(prev + 0.25, 2.5));
-  const handleZoomOut = () => setZoomLevel((prev) => Math.max(prev - 0.25, 0.6));
-  const handleResetZoom = () => {
-    setZoomLevel(1);
-    setPanOffset({ x: 0, y: 0 });
-  };
-
-  // Fullscreen toggle
-  const toggleFullscreen = () => {
-    if (!containerRef.current) return;
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
-    } else {
-      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
-    }
-  };
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [facingFilter, setFacingFilter] = useState('ALL');
+  const [cornersOnly, setCornersOnly] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [hovered, setHovered] = useState<Plot | null>(null);
+  const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const [mapSize, setMapSize] = useState({ width: 500, height: 580 });
+  const [fullscreen, setFullscreen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const view = project.layoutConfig;
+  const palette = DEFAULT_PALETTE;
+  const viewBox = view?.viewBox || '0 0 1200 800';
+  const roads = view?.roads || [];
+  const greenSpaces = view?.greenSpaces || [];
+  const facilities = view?.facilities || [];
+  const gate = view?.gate;
+  const viewWidth = view?.width || 1200;
+  const viewHeight = view?.height || 800;
+  const svgId = project.id.replace(/[^a-zA-Z0-9]/g, '');
+  const isVerifiedImage = view?.imageryStatus === 'verified' && Boolean(view?.aerialImage);
+  const isVerifiedGeometry = view?.geometryStatus === 'verified';
+  const parcelShapes = useMemo(() => {
+    const shapes = new Map<string, ParcelShape>();
+    plots.forEach((plot) => {
+      const shape = getParcelShape(plot.geometry);
+      if (shape) shapes.set(plot.id, shape);
+    });
+    return shapes;
+  }, [plots]);
+  const counts = useMemo(() => ({
+    AVAILABLE: plots.filter((plot) => plot.status === 'AVAILABLE').length,
+    RESERVED: plots.filter((plot) => plot.status === 'RESERVED').length,
+    SOLD: plots.filter((plot) => plot.status === 'SOLD').length,
+    UNAVAILABLE: plots.filter((plot) => plot.status === 'UNAVAILABLE').length
+  }), [plots]);
+  const visiblePlotIds = useMemo(() => new Set(plots.filter((plot) =>
+    (statusFilter === 'ALL' || plot.status === statusFilter) &&
+    (facingFilter === 'ALL' || (plot.facing?.toLowerCase().includes(facingFilter.toLowerCase()) ?? false)) &&
+    (!cornersOnly || plot.cornerPlot) &&
+    plot.plotNumber.toLowerCase().includes(searchTerm.trim().toLowerCase())
+  ).map((plot) => plot.id)), [plots, statusFilter, facingFilter, cornersOnly, searchTerm]);
+  const plotsWithoutGeometry = plots.filter((plot) => !parcelShapes.has(plot.id));
 
   useEffect(() => {
-    const handleFsChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener('fullscreenchange', handleFsChange);
-    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+    const updateFullscreen = () => setFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', updateFullscreen);
+    return () => document.removeEventListener('fullscreenchange', updateFullscreen);
   }, []);
 
-  // Mouse pan handling
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).tagName === 'svg' || (e.target as HTMLElement).id === 'siteplan-canvas-bg') {
-      setIsDragging(true);
-      setDragStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+  const resetView = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
+  const toggleFullscreen = () => {
+    if (!rootRef.current) return;
+    if (!document.fullscreenElement) void rootRef.current.requestFullscreen().catch(() => undefined);
+    else void document.exitFullscreen().catch(() => undefined);
+  };
+
+  const startPan = (event: React.PointerEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest('[data-plot]')) return;
+    setDragging(true);
+    setDragStart({ x: event.clientX - pan.x, y: event.clientY - pan.y });
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const movePan = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragging) setPan({ x: event.clientX - dragStart.x, y: event.clientY - dragStart.y });
+    const rect = mapRef.current?.getBoundingClientRect();
+    if (rect) {
+      setMouse({ x: event.clientX - rect.left, y: event.clientY - rect.top });
+      setMapSize({ width: rect.width, height: rect.height });
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging) {
-      setPanOffset({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      });
-    }
-
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setMousePos({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-      });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  // Touch pan handling for mobile touchscreens
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
-      const touch = e.touches[0];
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName === 'svg' ||
-        target.id === 'siteplan-canvas-bg' ||
-        target.classList.contains('pointer-events-none') ||
-        target.tagName === 'line' ||
-        target.tagName === 'pattern'
-      ) {
-        setIsDragging(true);
-        setDragStart({ x: touch.clientX - panOffset.x, y: touch.clientY - panOffset.y });
-      }
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (isDragging && e.touches.length === 1) {
-      const touch = e.touches[0];
-      setPanOffset({
-        x: touch.clientX - dragStart.x,
-        y: touch.clientY - dragStart.y
-      });
-    }
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-  };
-
-  // Filtered Plots Logic
-  const filteredPlots = plots.filter((plot) => {
-    if (statusFilter !== 'ALL' && plot.status !== statusFilter) return false;
-    if (facingFilter !== 'ALL' && !plot.facing.includes(facingFilter)) return false;
-    if (cornerOnly && !plot.cornerPlot) return false;
-    return true;
-  });
-
-  // Calculate live counts
-  const availableCount = plots.filter((p) => p.status === 'AVAILABLE').length;
-  const reservedCount = plots.filter((p) => p.status === 'RESERVED').length;
-  const soldCount = plots.filter((p) => p.status === 'SOLD').length;
-
-  const config = project.layoutConfig || {
-    viewBox: '0 0 1200 800',
-    width: 1200,
-    height: 800,
-    roads: [],
-    greenSpaces: [],
-    facilities: [],
-    gate: { x: 80, y: 360, label: 'MAIN ENTRANCE' }
-  };
-
-  // Palette compliance: Green (Available), Amber (In Process), Muted Red (Sold)
-  const getPlotFill = (plot: Plot, isMatched: boolean) => {
-    if (!isMatched) return '#2a3430'; // Dimmed
-    switch (plot.status) {
-      case 'AVAILABLE':
-        return '#16a34a';
-      case 'RESERVED':
-        return '#d97706';
-      case 'SOLD':
-        return '#dc2626';
-      default:
-        return '#16a34a';
-    }
-  };
-
-  const getPlotStroke = (plot: Plot, isSelected: boolean) => {
-    if (isSelected) return '#c5a059';
-    switch (plot.status) {
-      case 'AVAILABLE':
-        return '#14532d';
-      case 'RESERVED':
-        return '#78350f';
-      case 'SOLD':
-        return '#7f1d1d';
-      default:
-        return '#14532d';
-    }
-  };
+  const moveZoom = (direction: number) =>
+    setZoom((value) => Math.max(0.7, Math.min(2.6, value + direction)));
 
   return (
-    <div
-      ref={containerRef}
-      className={`relative bg-[#0d1612] text-white rounded-xl overflow-hidden border border-[#21352b] shadow-xl flex flex-col select-none ${className}`}
-    >
-      {/* Architectural Minimal Toolbar */}
-      <div className="bg-[#0f1f18] border-b border-[#1b3327] px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 z-20">
-        {/* Filter Controls */}
+    <div ref={rootRef} className={'relative flex flex-col overflow-hidden rounded-xl border border-[#294536] bg-[#14251b] text-white shadow-xl ' + className}>
+      <div className="z-20 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#112119] px-4 py-2.5">
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <select
+            aria-label="Filter plots by availability"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-[#162e24] text-[#c2d1c9] border border-[#234737] rounded-md px-2.5 py-1 text-xs font-medium focus:outline-hidden focus:border-[#c5a059]"
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="rounded-md border border-white/15 bg-[#1b3326] px-2.5 py-1.5 text-[#dce9df] outline-none"
           >
-            <option value="ALL">All ({plots.length})</option>
-            <option value="AVAILABLE">Available ({availableCount})</option>
-            <option value="RESERVED">In Process ({reservedCount})</option>
-            <option value="SOLD">Sold ({soldCount})</option>
+            <option value="ALL">All plots ({plots.length})</option>
+            {(['AVAILABLE', 'RESERVED', 'SOLD', 'UNAVAILABLE'] as PlotStatus[]).map((status) => (
+              <option key={status} value={status}>{STATUS_LABELS[status]} ({counts[status]})</option>
+            ))}
           </select>
-
           <select
+            aria-label="Filter plots by facing"
             value={facingFilter}
-            onChange={(e) => setFacingFilter(e.target.value)}
-            className="bg-[#162e24] text-[#c2d1c9] border border-[#234737] rounded-md px-2.5 py-1 text-xs font-medium focus:outline-hidden focus:border-[#c5a059]"
+            onChange={(event) => setFacingFilter(event.target.value)}
+            className="rounded-md border border-white/15 bg-[#1b3326] px-2.5 py-1.5 text-[#dce9df] outline-none"
           >
-            <option value="ALL">All Facings</option>
-            <option value="North">North</option>
-            <option value="East">East</option>
-            <option value="South">South</option>
-            <option value="West">West</option>
+            <option value="ALL">All facings</option>
+            {['North', 'East', 'South', 'West'].map((facing) => <option key={facing} value={facing}>{facing}</option>)}
           </select>
-
+          <label className="flex items-center gap-1.5 rounded-md border border-white/15 bg-[#1b3326] px-2.5 py-1.5 text-[#c4d3c8]">
+            <Search className="h-3 w-3 shrink-0" />
+            <input
+              type="search"
+              aria-label="Search by plot number"
+              placeholder="Plot no."
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              className="w-24 bg-transparent text-[#f2f5ef] outline-none placeholder:text-[#91a59a]"
+            />
+          </label>
           <button
             type="button"
-            onClick={() => setCornerOnly(!cornerOnly)}
-            className={`px-2.5 py-1 rounded-md border text-xs font-medium transition-colors flex items-center gap-1 ${
-              cornerOnly
-                ? 'bg-[#c5a059] text-[#0a1f17] border-[#c5a059] font-bold'
-                : 'bg-[#162e24] text-[#8fa89b] border-[#234737] hover:text-white'
-            }`}
+            onClick={() => setCornersOnly((value) => !value)}
+            aria-pressed={cornersOnly}
+            className={'flex items-center gap-1 rounded-md border px-2.5 py-1.5 ' +
+              (cornersOnly ? 'border-[#d7be80] bg-[#d7be80] text-[#1e281e]' : 'border-white/15 bg-[#1b3326] text-[#c4d3c8]')}
           >
-            <Sparkles className="w-3 h-3" />
-            <span>Corner</span>
+            <Sparkles className="h-3 w-3" />Corner
           </button>
         </div>
-
-        {/* Compact Zoom Controls */}
         <div className="flex items-center gap-1">
-          <button
-            onClick={handleZoomIn}
-            className="p-1 rounded-md bg-[#162e24] hover:bg-[#1d3d30] text-[#c2d1c9] hover:text-white border border-[#234737] transition-colors"
-            title="Zoom In"
-            aria-label="Zoom In"
-          >
-            <ZoomIn className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={handleZoomOut}
-            className="p-1 rounded-md bg-[#162e24] hover:bg-[#1d3d30] text-[#c2d1c9] hover:text-white border border-[#234737] transition-colors"
-            title="Zoom Out"
-            aria-label="Zoom Out"
-          >
-            <ZoomOut className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={handleResetZoom}
-            className="p-1 rounded-md bg-[#162e24] hover:bg-[#1d3d30] text-[#c2d1c9] hover:text-white border border-[#234737] transition-colors"
-            title="Reset"
-            aria-label="Reset View"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={toggleFullscreen}
-            className="p-1 rounded-md bg-[#162e24] hover:bg-[#1d3d30] text-[#c2d1c9] hover:text-white border border-[#234737] transition-colors"
-            title="Fullscreen"
-            aria-label="Toggle Fullscreen"
-          >
-            <Maximize2 className="w-3.5 h-3.5" />
-          </button>
+          <button type="button" onClick={() => moveZoom(0.2)} title="Zoom in" aria-label="Zoom in" className="rounded-md border border-white/15 bg-[#1b3326] p-1.5"><ZoomIn className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={() => moveZoom(-0.2)} title="Zoom out" aria-label="Zoom out" className="rounded-md border border-white/15 bg-[#1b3326] p-1.5"><ZoomOut className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={resetView} title="Reset view" aria-label="Reset view" className="rounded-md border border-white/15 bg-[#1b3326] p-1.5"><RotateCcw className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={toggleFullscreen} title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'} aria-label="Toggle fullscreen" className="rounded-md border border-white/15 bg-[#1b3326] p-1.5"><Maximize2 className="h-3.5 w-3.5" /></button>
         </div>
       </div>
 
-      {/* Interactive Blueprint Canvas & Side Details Panel */}
-      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden min-h-[520px] sm:min-h-[620px]">
-        {/* SVG Canvas Viewport */}
+      <div className="flex min-h-[580px] flex-1 flex-col overflow-hidden lg:flex-row">
         <div
-          className="relative flex-1 min-w-0 min-h-[460px] sm:min-h-[520px] lg:min-h-[620px] cursor-grab active:cursor-grabbing overflow-hidden bg-[#0d1612]"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
+          ref={mapRef}
+          className="relative min-h-[580px] flex-1 cursor-grab overflow-hidden bg-[#344b31] active:cursor-grabbing"
+          onPointerDown={startPan}
+          onPointerMove={movePan}
+          onPointerUp={() => setDragging(false)}
+          onPointerCancel={() => setDragging(false)}
+          onPointerLeave={() => { setDragging(false); setHovered(null); }}
         >
-          {/* Mobile Touch Navigation Hint */}
-          <div className="lg:hidden absolute top-2.5 left-3 z-10 pointer-events-none bg-[#0a1f17]/85 backdrop-blur-xs border border-[#1b3e2d] text-[#c2d1c9] px-2.5 py-1 rounded-full text-[10px] flex items-center gap-1.5 shadow-xs">
-            <span>👆 Drag to pan • Tap plot to view</span>
-          </div>
-        <svg
-          ref={svgRef}
-          viewBox={config.viewBox}
-          className="w-full h-full transition-transform duration-75 ease-out"
-          style={{
-            transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`,
-            transformOrigin: 'center center'
-          }}
-        >
-          <defs>
-            {/* Architectural Blueprint CAD Grid Pattern */}
-            <pattern id="cad-grid" width="30" height="30" patternUnits="userSpaceOnUse">
-              <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#12251d" strokeWidth="0.8" opacity="0.6" />
-            </pattern>
-            {/* Interlocking Paver Sidewalk Pattern */}
-            <pattern id="sidewalk-pattern" width="12" height="6" patternUnits="userSpaceOnUse">
-              <rect width="12" height="6" fill="#1a2f24" stroke="#254233" strokeWidth="0.6" />
-            </pattern>
-          </defs>
-
-          {/* Background Canvas */}
-          <rect
-            id="siteplan-canvas-bg"
-            x="0"
-            y="0"
-            width={config.width}
-            height={config.height}
-            fill="#0b1611"
-          />
-
-          {/* Blueprint Grid Layer */}
-          <rect
-            x="0"
-            y="0"
-            width={config.width}
-            height={config.height}
-            fill="url(#cad-grid)"
-            className="pointer-events-none"
-          />
-
-          {/* Outer Boundary Perimeter Wall */}
-          <rect
-            x="50"
-            y="15"
-            width={config.width - 100}
-            height={config.height - 30}
-            rx="8"
-            fill="#0e1a14"
-            stroke="#1f3d2e"
-            strokeWidth="1.5"
-            strokeDasharray="6 4"
-          />
-
-          {/* North OSR Botanical Park (When generic layout has no explicit green spaces) */}
-          {config.greenSpaces.length === 0 && (
-            <g id="osr-north-park" className="pointer-events-none select-none">
-              <rect
-                x="95"
-                y="24"
-                width="950"
-                height="94"
-                rx="8"
-                fill="#123023"
-                stroke="#1c4835"
-                strokeWidth="1.2"
-              />
-              <rect
-                x="103"
-                y="30"
-                width="934"
-                height="82"
-                rx="6"
-                fill="none"
-                stroke="#c5a059"
-                strokeWidth="1"
-                strokeDasharray="6 4"
-                opacity="0.45"
-              />
-              <text
-                x="570"
-                y="62"
-                textAnchor="middle"
-                fill="#c5a059"
-                fontSize="11"
-                fontWeight="700"
-                letterSpacing="1.5px"
-              >
-                OSR GRAND BOTANICAL PARK & CENTRAL WALKING TRAIL
-              </text>
-              <text
-                x="570"
-                y="80"
-                textAnchor="middle"
-                fill="#7b998a"
-                fontSize="9"
-                fontWeight="500"
-              >
-                Statutory DTCP Sanctioned Open Space Reservation • 100% Tree Canopy Buffer
-              </text>
-              {/* Decorative Tree Symbols in OSR Park */}
-              {[150, 260, 370, 770, 880, 990].map((tx) => (
-                <g key={`tree-n-${tx}`} transform={`translate(${tx}, 70)`}>
-                  <circle cx="0" cy="0" r="10" fill="#1e4e37" stroke="#2a6d4e" strokeWidth="1" />
-                  <circle cx="0" cy="0" r="4" fill="#c5a059" opacity="0.7" />
-                </g>
-              ))}
-            </g>
-          )}
-
-          {/* South Recreation Park & Children's Play Court */}
-          {config.greenSpaces.length === 0 && (
-            <g id="osr-south-park" className="pointer-events-none select-none">
-              <rect
-                x="95"
-                y="670"
-                width="950"
-                height="94"
-                rx="8"
-                fill="#123023"
-                stroke="#1c4835"
-                strokeWidth="1.2"
-              />
-              <rect
-                x="103"
-                y="676"
-                width="934"
-                height="82"
-                rx="6"
-                fill="none"
-                stroke="#c5a059"
-                strokeWidth="1"
-                strokeDasharray="6 4"
-                opacity="0.45"
-              />
-              <text
-                x="570"
-                y="708"
-                textAnchor="middle"
-                fill="#c5a059"
-                fontSize="11"
-                fontWeight="700"
-                letterSpacing="1.5px"
-              >
-                COMMUNITY MEDITATION GAZEBO, PLAY COURT & CITIZEN DECK
-              </text>
-              <text
-                x="570"
-                y="726"
-                textAnchor="middle"
-                fill="#7b998a"
-                fontSize="9"
-                fontWeight="500"
-              >
-                Dedicated Resident Amenities • Landscaped Flower Meadows & Seating Pavilions
-              </text>
-              {/* Decorative Tree Symbols in South Park */}
-              {[150, 260, 370, 770, 880, 990].map((tx) => (
-                <g key={`tree-s-${tx}`} transform={`translate(${tx}, 715)`}>
-                  <circle cx="0" cy="0" r="10" fill="#1e4e37" stroke="#2a6d4e" strokeWidth="1" />
-                  <circle cx="0" cy="0" r="4" fill="#c5a059" opacity="0.7" />
-                </g>
-              ))}
-            </g>
-          )}
-
-          {/* Sidewalks / Footpaths along Main Roads */}
-          {config.roads.map((road) => (
-            <g key={`sidewalk-${road.id}`} className="pointer-events-none">
-              {!road.isVertical ? (
-                <>
-                  {/* North Paved Sidewalk */}
-                  <rect
-                    x={road.x}
-                    y={road.y - 8}
-                    width={road.width}
-                    height="8"
-                    fill="url(#sidewalk-pattern)"
-                    stroke="#274435"
-                    strokeWidth="0.8"
-                  />
-                  {/* South Paved Sidewalk */}
-                  <rect
-                    x={road.x}
-                    y={road.y + road.height}
-                    width={road.width}
-                    height="8"
-                    fill="url(#sidewalk-pattern)"
-                    stroke="#274435"
-                    strokeWidth="0.8"
-                  />
-                </>
-              ) : null}
-            </g>
-          ))}
-
-          {/* Terminal Cul-de-sac Roundabout (for single avenue projects) */}
-          {config.roads.length === 1 && (
-            <g id="cul-de-sac-turnaround" className="pointer-events-none select-none">
-              {/* Outer Paved Roundabout Circle */}
-              <circle cx="1060" cy="395" r="54" fill="#1b2a22" stroke="#294537" strokeWidth="1.2" />
-              <circle cx="1060" cy="395" r="46" fill="#16241d" stroke="#c5a059" strokeWidth="1" strokeDasharray="4 4" opacity="0.5" />
-              {/* Central Landscaped Fountain Island */}
-              <circle cx="1060" cy="395" r="22" fill="#133626" stroke="#1f543c" strokeWidth="1.5" />
-              <circle cx="1060" cy="395" r="8" fill="#c5a059" opacity="0.8" />
-              <text x="1060" y="398" textAnchor="middle" fill="#0a1f17" fontSize="7" fontWeight="800">
-                ★
-              </text>
-            </g>
-          )}
-
-          {/* Roads Layer */}
-          {config.roads.map((road) => (
-            <g key={road.id}>
-              <rect
-                x={road.x}
-                y={road.y}
-                width={road.width}
-                height={road.height}
-                fill="#182620"
-                stroke="#294335"
-                strokeWidth="1.2"
-                rx="2"
-              />
-              {/* Road Center Line */}
-              {road.isVertical ? (
-                <line
-                  x1={road.x + road.width / 2}
-                  y1={road.y + 10}
-                  x2={road.x + road.width / 2}
-                  y2={road.y + road.height - 10}
-                  stroke="#c5a059"
-                  strokeWidth="1.2"
-                  strokeDasharray="5 5"
-                  opacity="0.45"
-                />
-              ) : (
-                <line
-                  x1={road.x + 10}
-                  y1={road.y + road.height / 2}
-                  x2={road.x + road.width - 10}
-                  y2={road.y + road.height / 2}
-                  stroke="#c5a059"
-                  strokeWidth="1.2"
-                  strokeDasharray="5 5"
-                  opacity="0.45"
-                />
-              )}
-              {/* Road Label */}
-              <text
-                x={road.x + road.width / 2}
-                y={road.y + road.height / 2 + 3.5}
-                textAnchor="middle"
-                fill="#8ea89a"
-                fontSize="10"
-                fontWeight="700"
-                letterSpacing="1.2px"
-                className="pointer-events-none select-none"
-                style={{
-                  transform: road.isVertical
-                    ? `rotate(-90deg, ${road.x + road.width / 2}, ${road.y + road.height / 2})`
-                    : undefined
-                }}
-              >
-                {road.label}
-              </text>
-            </g>
-          ))}
-
-          {/* Green Spaces */}
-          {config.greenSpaces.map((park) => (
-            <g key={park.id}>
-              <rect
-                x={park.x}
-                y={park.y}
-                width={park.width}
-                height={park.height}
-                rx="6"
-                fill="#16382a"
-                stroke="#1f4d3a"
-                strokeWidth="1"
-              />
-              <text
-                x={park.x + park.width / 2}
-                y={park.y + park.height / 2 + 4}
-                textAnchor="middle"
-                fill="#7b998a"
-                fontSize="11"
-                fontWeight="600"
-                letterSpacing="0.8px"
-              >
-                {park.label}
-              </text>
-            </g>
-          ))}
-
-          {/* Facilities (Clubhouse, etc.) */}
-          {config.facilities.map((fac) => (
-            <g key={fac.id}>
-              <rect
-                x={fac.x}
-                y={fac.y}
-                width={fac.width}
-                height={fac.height}
-                rx="4"
-                fill="#13271f"
-                stroke="#c5a059"
-                strokeWidth="1"
-                strokeDasharray="3 2"
-              />
-              <text
-                x={fac.x + fac.width / 2}
-                y={fac.y + fac.height / 2 + 4}
-                textAnchor="middle"
-                fill="#c5a059"
-                fontSize="10"
-                fontWeight="600"
-              >
-                {fac.label}
-              </text>
-            </g>
-          ))}
-
-          {/* Grand Entrance Security Gatehouse */}
-          {config.gate && (
-            <g className="pointer-events-none select-none">
-              {/* Gatehouse Building */}
-              <rect
-                x={config.gate.x - 32}
-                y={config.gate.y + 4}
-                width="32"
-                height="62"
-                rx="3"
-                fill="#c5a059"
-                stroke="#e5c88b"
-                strokeWidth="1"
-              />
-              {/* Roof Cap */}
-              <rect
-                x={config.gate.x - 34}
-                y={config.gate.y + 2}
-                width="36"
-                height="4"
-                rx="1"
-                fill="#785514"
-              />
-              <text
-                x={config.gate.x - 16}
-                y={config.gate.y + 36}
-                textAnchor="middle"
-                fill="#0a1f17"
-                fontSize="8"
-                fontWeight="800"
-                transform={`rotate(-90, ${config.gate.x - 16}, ${config.gate.y + 36})`}
-              >
-                ENTRY GATE
-              </text>
-            </g>
-          )}
-
-          {/* Interactive Plots Polygons */}
-          {plots.map((plot) => {
-            const isSelected = selectedPlot?.id === plot.id;
-            const isMatched = filteredPlots.some((p) => p.id === plot.id);
-            const isHovered = hoveredPlot?.id === plot.id;
-            const { x, y, width, height } = plot.geometry;
-
-            const fill = getPlotFill(plot, isMatched);
-            const stroke = getPlotStroke(plot, isSelected);
-
-            const isDeepPlot = height >= 140;
-            const dimParts = plot.dimensions.split('×');
-            const widthDim = dimParts[0]?.trim() || "30'";
-            const depthDim = dimParts[1]?.trim() || "50'";
-
-            return (
-              <g
-                key={plot.id}
-                tabIndex={0}
-                role="button"
-                aria-label={`Plot ${plot.plotNumber}, ${plot.status}, ${formatINR(plot.price)}`}
-                className="outline-hidden cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectPlot(plot);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onSelectPlot(plot);
-                  }
-                }}
-                onMouseEnter={() => setHoveredPlot(plot)}
-                onMouseLeave={() => setHoveredPlot(null)}
-              >
-                {/* Plot Background Shape */}
-                <rect
-                  x={x}
-                  y={y}
-                  width={width}
-                  height={height}
-                  rx="4"
-                  fill={fill}
-                  stroke={isSelected ? '#ffffff' : stroke}
-                  strokeWidth={isSelected ? '2.5' : '1.2'}
-                  opacity={isMatched ? (isSelected ? '1' : isHovered ? '0.96' : '0.88') : '0.15'}
-                  className={`plot-polygon transition-all ${isSelected ? 'is-selected' : ''}`}
-                />
-
-                {/* Blueprint Dimension Ticks on Plot Borders */}
-                {isDeepPlot && (
-                  <>
-                    {/* Top Boundary Dimension */}
-                    <text
-                      x={x + width / 2}
-                      y={y + 14}
-                      textAnchor="middle"
-                      fill="#86efac"
-                      fontSize={width < 50 ? '8' : '9.5'}
-                      fontWeight="700"
-                      className="pointer-events-none select-none opacity-90"
-                      opacity={isMatched ? '0.9' : '0.15'}
-                    >
-                      {widthDim}
-                    </text>
-
-                    {/* Bottom Boundary Dimension */}
-                    <text
-                      x={x + width / 2}
-                      y={y + height - 6}
-                      textAnchor="middle"
-                      fill="#86efac"
-                      fontSize={width < 50 ? '8' : '9.5'}
-                      fontWeight="700"
-                      className="pointer-events-none select-none opacity-90"
-                      opacity={isMatched ? '0.9' : '0.15'}
-                    >
-                      {widthDim}
-                    </text>
-
-                    {/* Left Side Depth Dimension */}
-                    <text
-                      x={x + 10}
-                      y={y + height / 2}
-                      textAnchor="middle"
-                      fill="#cbd5e1"
-                      fontSize="8"
-                      fontWeight="600"
-                      className="pointer-events-none select-none opacity-80"
-                      opacity={isMatched ? '0.8' : '0.15'}
-                      transform={`rotate(-90, ${x + 10}, ${y + height / 2})`}
-                    >
-                      {depthDim}
-                    </text>
-                  </>
-                )}
-
-                {/* Center Architectural Plot Badge */}
-                {isDeepPlot ? (
-                  <>
-                    {/* Badge Container Box */}
-                    <rect
-                      x={x + 4}
-                      y={y + height / 2 - 38}
-                      width={width - 8}
-                      height="76"
-                      rx="4"
-                      fill="#000000"
-                      fillOpacity="0.28"
-                      stroke="#ffffff"
-                      strokeOpacity="0.12"
-                      strokeWidth="0.8"
-                      className="pointer-events-none"
-                    />
-
-                    {/* Plot Number */}
-                    <text
-                      x={x + width / 2}
-                      y={y + height / 2 - 18}
-                      textAnchor="middle"
-                      fill="#ffffff"
-                      fontSize={width < 50 ? '13' : '16'}
-                      fontWeight="800"
-                      fontFamily="'Plus Jakarta Sans', sans-serif"
-                      className="pointer-events-none select-none"
-                      opacity={isMatched ? '1' : '0.2'}
-                    >
-                      {plot.plotNumber}
-                    </text>
-
-                    {/* Plot Area */}
-                    <text
-                      x={x + width / 2}
-                      y={y + height / 2}
-                      textAnchor="middle"
-                      fill="#f8fafc"
-                      fontSize={width < 50 ? '9' : '11'}
-                      fontWeight="700"
-                      className="pointer-events-none select-none"
-                      opacity={isMatched ? '0.95' : '0.2'}
-                    >
-                      {plot.areaSqFt} SQ.FT
-                    </text>
-
-                    {/* Plot Dimensions */}
-                    <text
-                      x={x + width / 2}
-                      y={y + height / 2 + 15}
-                      textAnchor="middle"
-                      fill="#cbd5e1"
-                      fontSize={width < 50 ? '8' : '9.5'}
-                      fontWeight="500"
-                      className="pointer-events-none select-none opacity-80"
-                      opacity={isMatched ? '0.8' : '0.15'}
-                    >
-                      {plot.dimensions}
-                    </text>
-
-                    {/* Road Facing Arrow */}
-                    <text
-                      x={x + width / 2}
-                      y={y + height / 2 + 28}
-                      textAnchor="middle"
-                      fill="#c5a059"
-                      fontSize="8"
-                      fontWeight="700"
-                      className="pointer-events-none select-none"
-                      opacity={isMatched ? '0.9' : '0.2'}
-                    >
-                      {plot.facing === 'South' ? '↓ ROAD FACING' : '↑ ROAD FACING'}
-                    </text>
-                  </>
-                ) : (
-                  <>
-                    {/* Compact Fallback for smaller heights */}
-                    <text
-                      x={x + width / 2}
-                      y={y + height / 2 - 4}
-                      textAnchor="middle"
-                      fill="#ffffff"
-                      fontSize={width < 46 ? '10' : width < 56 ? '11' : '12'}
-                      fontWeight="700"
-                      fontFamily="'Plus Jakarta Sans', sans-serif"
-                      className="pointer-events-none select-none"
-                      opacity={isMatched ? '1' : '0.2'}
-                    >
-                      {plot.plotNumber}
-                    </text>
-
-                    <text
-                      x={x + width / 2}
-                      y={y + height / 2 + 11}
-                      textAnchor="middle"
-                      fill="#e5ece8"
-                      fontSize={width < 46 ? '8' : '9'}
-                      fontWeight="500"
-                      className="pointer-events-none select-none opacity-80"
-                      opacity={isMatched ? '0.8' : '0.15'}
-                    >
-                      {plot.areaSqFt} sft
-                    </text>
-                  </>
-                )}
-
-                {/* Corner Plot Ribbon Tag */}
-                {plot.cornerPlot && (
-                  <g className="pointer-events-none">
-                    {width >= 60 ? (
-                      <>
-                        <rect x={x + width - 36} y={y + 5} width="32" height="13" rx="2" fill="#c5a059" />
-                        <text x={x + width - 20} y={y + 14} textAnchor="middle" fill="#0a1f17" fontSize="7.5" fontWeight="800">
-                          CORNER
-                        </text>
-                      </>
-                    ) : (
-                      <circle cx={x + width - 6} cy={y + 6} r="3" fill="#c5a059" />
-                    )}
-                  </g>
-                )}
-              </g>
-            );
-          })}
-
-          {/* Architectural North Direction Compass */}
-          <g transform={`translate(${config.width - 68}, 24)`}>
-            <circle cx="16" cy="16" r="15" fill="#0d1b15" stroke="#234737" strokeWidth="1.2" />
-            <polygon points="16,4 20,16 16,13 12,16" fill="#c5a059" />
-            <polygon points="16,28 20,16 16,19 12,16" fill="#3a5246" />
-            <circle cx="16" cy="16" r="2.2" fill="#c5a059" />
-            <text x="16" y="3" textAnchor="middle" fill="#c5a059" fontSize="8" fontWeight="800">
-              N
-            </text>
-          </g>
-        </svg>
-
-        {/* Minimal Hover Tooltip */}
-        {hoveredPlot && (
-          <div
-            className="absolute z-30 pointer-events-none bg-[#09120e]/95 border border-[#234737] text-white px-3 py-2 rounded-lg shadow-xl text-xs font-sans-clean max-w-xs transition-opacity duration-150"
+          <svg
+            viewBox={viewBox}
+            role="group"
+            aria-label={project.name + ' illustrative plot masterplan'}
+            className="h-full w-full touch-pan-y"
             style={{
-              left: Math.min(mousePos.x + 12, (containerRef.current?.clientWidth || 600) - 180),
-              top: Math.min(mousePos.y + 12, (containerRef.current?.clientHeight || 500) - 100)
+              transform: 'translate(' + pan.x + 'px,' + pan.y + 'px) scale(' + zoom + ')',
+              transformOrigin: 'center',
+              transition: dragging ? 'none' : 'transform 120ms ease-out'
             }}
           >
-            <div className="flex items-center justify-between gap-3 border-b border-[#1b3327] pb-1 mb-1">
-              <span className="font-semibold text-white">
-                Plot #{hoveredPlot.plotNumber}
-              </span>
-              <span
-                className={`text-[9px] font-bold uppercase tracking-wider ${
-                  hoveredPlot.status === 'AVAILABLE'
-                    ? 'text-emerald-400'
-                    : hoveredPlot.status === 'RESERVED'
-                    ? 'text-amber-400'
-                    : 'text-rose-400'
-                }`}
-              >
-                {hoveredPlot.status === 'AVAILABLE' ? 'Available' : hoveredPlot.status === 'RESERVED' ? 'In Process' : 'Sold'}
-              </span>
+            <defs>
+              <linearGradient id={svgId + '-ground'} x1="0" y1="0" x2="1" y2="1">
+                <stop stopColor={palette.groundStart} />
+                <stop offset="0.48" stopColor={palette.groundMid} />
+                <stop offset="1" stopColor={palette.groundEnd} />
+              </linearGradient>
+              <linearGradient id={svgId + '-road'} x1="0" y1="0" x2="0" y2="1">
+                <stop stopColor={palette.road} />
+                <stop offset="0.5" stopColor="#202729" />
+                <stop offset="1" stopColor={palette.road} />
+              </linearGradient>
+              <linearGradient id={svgId + '-lot'} x1="0" y1="0" x2="0.85" y2="1">
+                <stop stopColor={palette.lotStart} />
+                <stop offset="0.55" stopColor={palette.lotMid} />
+                <stop offset="1" stopColor={palette.lotEnd} />
+              </linearGradient>
+              <pattern id={svgId + '-grass'} width="46" height="38" patternUnits="userSpaceOnUse">
+                <path d="M7 29l3-5m12 8 2-4m13-17 2-5" fill="none" stroke={palette.grass} strokeOpacity="0.16" strokeWidth="1.4" />
+                <circle cx="15" cy="11" r="1.2" fill={palette.grass} fillOpacity="0.16" />
+                <circle cx="37" cy="30" r="1" fill={palette.grass} fillOpacity="0.18" />
+              </pattern>
+              <radialGradient id={svgId + '-shade'}>
+                <stop offset="0.55" stopColor="#000" stopOpacity="0" />
+                <stop offset="1" stopColor="#101b16" stopOpacity="0.34" />
+              </radialGradient>
+              <filter id={svgId + '-shadow'} x="-30%" y="-30%" width="160%" height="170%">
+                <feDropShadow dx="0" dy="5" stdDeviation="5" floodColor="#102016" floodOpacity="0.45" />
+              </filter>
+              <filter id={svgId + '-label'} x="-40%" y="-40%" width="180%" height="180%">
+                <feDropShadow dx="1" dy="2" stdDeviation="2" floodColor="#1a261b" floodOpacity="0.92" />
+              </filter>
+            </defs>
+
+            {isVerifiedImage ? (
+              <image href={view.aerialImage!} x="0" y="0" width={viewWidth} height={viewHeight} preserveAspectRatio="none" />
+            ) : (
+              <>
+                <rect x="0" y="0" width={viewWidth} height={viewHeight} fill={'url(#' + svgId + '-ground)'} />
+                <rect x="0" y="0" width={viewWidth} height={viewHeight} fill={'url(#' + svgId + '-grass)'} opacity="0.58" />
+                <rect x="0" y="0" width={viewWidth} height={viewHeight} fill={'url(#' + svgId + '-shade)'} />
+              </>
+            )}
+
+            {greenSpaces.map((space) => (
+              <g key={space.id} pointerEvents="none">
+                <rect x={space.x} y={space.y} width={space.width} height={space.height} rx="12" fill="#263e2b" opacity="0.5" />
+                <rect x={space.x + 3} y={space.y + 3} width={Math.max(0, space.width - 6)} height={Math.max(0, space.height - 6)} rx="10" fill={space.kind === 'water' ? palette.water : palette.park} stroke={palette.parkBorder} strokeWidth="2" />
+                <rect x={space.x + 7} y={space.y + 7} width={Math.max(0, space.width - 14)} height={Math.max(0, space.height - 14)} rx="8" fill={'url(#' + svgId + '-grass)'} opacity="0.46" />
+                <text x={space.x + space.width / 2} y={space.y + space.height / 2} textAnchor="middle" dominantBaseline="middle" fill="#f5edcf" fontSize={Math.min(14, Math.max(8, space.width / 20))} fontWeight="700" letterSpacing="1" paintOrder="stroke" stroke="#32462f" strokeWidth="3">{space.label || space.name}</text>
+              </g>
+            ))}
+
+            {roads.map((road) => {
+              const vertical = road.isVertical ?? road.height > road.width;
+              const center = roadCenter(road.x, road.y, road.width, road.height, vertical);
+              const label = road.label || road.name;
+              return (
+                <g key={road.id} pointerEvents="none" filter={'url(#' + svgId + '-shadow)'}>
+                  <rect x={road.x - 5} y={road.y - 5} width={road.width + 10} height={road.height + 10} rx={Math.min(10, Math.max(3, road.height / 8))} fill={palette.roadEdge} />
+                  <rect x={road.x} y={road.y} width={road.width} height={road.height} rx={Math.min(8, Math.max(2, road.height / 10))} fill={'url(#' + svgId + '-road)'} />
+                  <line {...center} stroke={palette.centerline} strokeWidth={Math.max(1, Math.min(2, road.height / 24))} strokeDasharray={Math.max(6, Math.min(15, road.height / 3)) + ' ' + Math.max(6, Math.min(15, road.height / 3))} opacity="0.68" />
+                  <text
+                    x={road.x + road.width / 2}
+                    y={road.y + road.height / 2}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="#f4efd9"
+                    fontSize={Math.min(13, Math.max(8, Math.min(road.width, road.height) / 4))}
+                    fontWeight="700"
+                    letterSpacing="1"
+                    paintOrder="stroke"
+                    stroke="#202827"
+                    strokeWidth="3"
+                    transform={vertical ? 'rotate(-90 ' + (road.x + road.width / 2) + ' ' + (road.y + road.height / 2) + ')' : undefined}
+                  >
+                    {label}
+                  </text>
+                </g>
+              );
+            })}
+
+            {facilities.map((facility) => (
+              <g key={facility.id} pointerEvents="none" filter={'url(#' + svgId + '-shadow)'}>
+                <rect x={facility.x} y={facility.y} width={facility.width} height={facility.height} rx="8" fill={palette.park} stroke={palette.parkBorder} strokeWidth="2" />
+                <rect x={facility.x + 4} y={facility.y + 4} width={Math.max(0, facility.width - 8)} height={Math.max(0, facility.height - 8)} rx="5" fill="#405945" opacity="0.84" />
+                <text x={facility.x + facility.width / 2} y={facility.y + facility.height / 2} textAnchor="middle" dominantBaseline="middle" fill="#fff5d7" fontSize={Math.min(12, Math.max(8, facility.width / 12))} fontWeight="700" paintOrder="stroke" stroke="#263a2c" strokeWidth="3">{facility.label || facility.name}</text>
+              </g>
+            ))}
+
+            {isVerifiedGeometry && view?.siteBoundary && (
+                <polygon points={view.siteBoundary} fill="none" stroke={palette.boundary} strokeWidth="5" strokeLinejoin="round" pointerEvents="none" />
+            )}
+
+            {plots.map((plot) => {
+              const shape = parcelShapes.get(plot.id);
+              if (!shape) return null;
+              const selected = selectedPlot?.id === plot.id;
+              const active = hovered?.id === plot.id;
+              const matches = visiblePlotIds.has(plot.id);
+              const fill = STATUS_FILL[plot.status];
+              const statusColor = STATUS_COLORS[plot.status];
+
+              return (
+                <g
+                  key={plot.id}
+                  data-plot="true"
+                  tabIndex={0}
+                  role="button"
+                  aria-label={'Plot ' + plot.plotNumber + ', ' + STATUS_LABELS[plot.status] + ', ' + formatINR(plot.price)}
+                  className="cursor-pointer outline-none"
+                  onClick={(event) => { event.stopPropagation(); onSelectPlot(plot); }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      onSelectPlot(plot);
+                    }
+                  }}
+                  onFocus={() => setHovered(plot)}
+                  onMouseEnter={() => setHovered(plot)}
+                  onMouseLeave={() => setHovered(null)}
+                >
+                  <polygon
+                    points={shape.points}
+                    fill={fill}
+                    filter={'url(#' + svgId + '-shadow)'}
+                    fillOpacity={matches ? 0.96 : 0.12}
+                    stroke={palette.boundary}
+                    strokeWidth={selected ? 4 : active ? 3 : 1.8}
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  <polygon
+                    points={shape.points}
+                    fill={selected || active ? '#f2d487' : 'transparent'}
+                    fillOpacity={selected || active ? 0.12 : 0}
+                    stroke={selected ? '#fff8d8' : active ? '#fff0bc' : palette.boundary}
+                    strokeWidth={selected ? 4 : active ? 3 : 1.8}
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="none"
+                  />
+                  <text
+                    x={shape.centerX}
+                    y={shape.centerY}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="#fff"
+                    fontSize={Math.max(10, Math.min(24, Math.min(shape.width, shape.height) * 0.33))}
+                    fontFamily="Arial, sans-serif"
+                    fontWeight="700"
+                    paintOrder="stroke"
+                    stroke="#243125"
+                    strokeWidth="3"
+                    strokeLinejoin="round"
+                    filter={'url(#' + svgId + '-label)'}
+                    opacity={matches ? 1 : 0.4}
+                    pointerEvents="none"
+                  >
+                    {plot.plotNumber.replace(/^P-/, '')}
+                  </text>
+                  <circle
+                    cx={shape.right - Math.min(10, shape.width * 0.12)}
+                    cy={shape.top + Math.min(10, shape.height * 0.12)}
+                    r={Math.max(3, Math.min(5, Math.min(shape.width, shape.height) * 0.055))}
+                    fill={statusColor}
+                    stroke="#fff2d5"
+                    strokeWidth="1.2"
+                    pointerEvents="none"
+                  />
+                </g>
+              );
+            })}
+
+            {gate && (
+              <g pointerEvents="none" filter={'url(#' + svgId + '-shadow)'}>
+                <circle cx={gate.x} cy={gate.y} r="14" fill={palette.accent} stroke="#fff0c5" strokeWidth="2" />
+                <path d={'M' + (gate.x - 5) + ' ' + gate.y + 'h10 M' + gate.x + ' ' + (gate.y - 5) + 'v10'} stroke="#27392d" strokeWidth="2" />
+                <text x={gate.x + 20} y={gate.y + 4} fill="#fff3d0" fontSize="11" fontWeight="800" letterSpacing="1" paintOrder="stroke" stroke="#25362b" strokeWidth="3">{gate.label}</text>
+              </g>
+            )}
+          </svg>
+
+          {hovered && (
+            <div
+              className="pointer-events-none absolute z-30 max-w-[220px] rounded-lg border border-[#ead9a2]/60 bg-[#16251e]/95 px-3 py-2 text-xs shadow-xl"
+              style={{
+                left: Math.min(mouse.x + 12, Math.max(8, mapSize.width - 230)),
+                top: Math.min(mouse.y + 12, Math.max(8, mapSize.height - 100))
+              }}
+            >
+              <div className="mb-1 flex items-center justify-between gap-4 border-b border-white/10 pb-1">
+                <span className="font-semibold">Plot #{hovered.plotNumber}</span>
+                <span style={{ color: STATUS_COLORS[hovered.status] }}>{STATUS_LABELS[hovered.status]}</span>
+              </div>
+              <div className="text-[#ced8ce]">{hovered.areaSqFt.toLocaleString()} sq.ft · {hovered.facing || 'Facing to be confirmed'}</div>
+              <div className="font-medium">{formatINR(hovered.price)}</div>
+              <div className="text-[10px] text-[#9eb2a3]">{hovered.dimensions}</div>
             </div>
-            <div className="text-[11px] text-[#8fa89b] space-y-0.5">
-              <div>{hoveredPlot.areaSqFt} sq.ft • {hoveredPlot.facing} Facing</div>
-              <div className="text-white font-medium">{formatINR(hoveredPlot.price)}</div>
-            </div>
+          )}
+
+          <div className="absolute bottom-3 left-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-white/20 bg-[#17261d]/90 px-3 py-2 text-[10px] text-[#f1efdc] shadow backdrop-blur-sm">
+            {(['AVAILABLE', 'RESERVED', 'SOLD', 'UNAVAILABLE'] as PlotStatus[]).map((status) => (
+              <span key={status} className="flex items-center gap-1.5">
+                <i className="h-2.5 w-2.5 rounded-full border border-white/70" style={{ background: STATUS_COLORS[status] }} />
+                {STATUS_LABELS[status]}
+              </span>
+            ))}
           </div>
-        )}
+
+          {parcelShapes.size === 0 && (
+            <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-lg border border-[#e4d3a0]/50 bg-[#14251b]/95 p-4 text-center text-sm text-[#f2ead2] shadow-xl">
+              Approved parcel coordinates are not connected for this development. Select a plot from the records below to inspect its listed details.
+            </div>
+          )}
         </div>
 
-        {/* Docked Plot Details Side Panel */}
         {selectedPlot && (
           <PlotDrawer
             plot={selectedPlot}
@@ -922,28 +521,28 @@ export const PlotSitePlan: React.FC<PlotSitePlanProps> = ({
         )}
       </div>
 
-      {/* Small Persistent Status Legend */}
-      <div className="bg-[#0f1f18] border-t border-[#1b3327] px-5 py-2.5 flex items-center justify-between z-20 text-xs">
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-xs bg-[#16a34a]"></span>
-            <span className="text-[#c2d1c9]">Available ({availableCount})</span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-xs bg-[#d97706]"></span>
-            <span className="text-[#c2d1c9]">In Process ({reservedCount})</span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-xs bg-[#dc2626]"></span>
-            <span className="text-[#c2d1c9]">Sold ({soldCount})</span>
+      {plotsWithoutGeometry.length > 0 && (
+        <div className="border-t border-white/10 bg-[#14251b] px-4 py-3">
+          <p className="mb-2 text-xs text-[#b8c8ba]">Plots without mapped parcel coordinates</p>
+          <div className="flex max-h-28 flex-wrap gap-2 overflow-auto">
+            {plotsWithoutGeometry.filter((plot) => visiblePlotIds.has(plot.id)).map((plot) => (
+              <button
+                type="button"
+                key={plot.id}
+                onClick={() => onSelectPlot(plot)}
+                className="rounded-md border border-white/15 bg-[#1b3326] px-2.5 py-1.5 text-xs text-[#e7eee7] hover:border-[#d7be80]"
+              >
+                #{plot.plotNumber} · {STATUS_LABELS[plot.status]}
+              </button>
+            ))}
           </div>
         </div>
+      )}
 
-        <div className="text-[11px] text-[#7b998a] hidden sm:block">
-          Click plot to view specifications & visit booking
-        </div>
+      <div className="border-t border-white/10 bg-[#112119] px-4 py-2 text-center text-[11px] text-[#b8c8ba]">
+        {isVerifiedGeometry
+          ? 'Select a parcel for details · verified geometry'
+          : 'Select a plot for details · illustrative plot coordinates and listing data'}
       </div>
     </div>
   );

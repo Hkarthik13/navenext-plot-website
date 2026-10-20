@@ -49,7 +49,7 @@ export const Navbar: React.FC = () => {
             to="/"
             className="flex items-center group focus:outline-hidden"
             onClick={() => setMobileMenuOpen(false)}
-            aria-label="Navanextventures Home"
+            aria-label="Navanext Home"
           >
             <Logo isLight={false} />
           </Link>

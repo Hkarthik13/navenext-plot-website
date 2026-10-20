@@ -36,7 +36,7 @@ export const Logo: React.FC<LogoProps> = ({
       <div className="flex flex-col text-left">
         <div className="flex items-baseline">
           <span className={`font-sans font-medium text-[17px] tracking-tight lowercase leading-tight ${textColor}`}>
-            navanextventures
+            Navanext
           </span>
           <span className="text-[#c5a059] font-bold text-[17px] leading-none">.</span>
         </div>

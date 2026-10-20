@@ -78,7 +78,7 @@ export const FloatingConcierge: React.FC = () => {
             </div>
 
             <a
-              href="https://wa.me/917200386806?text=Hello%20Navanextventures%2C%20I%20am%20interested%20in%20verifying%20plots%20in%20Tamil%20Nadu.%20Please%20guide%20me."
+              href="https://wa.me/917200386806?text=Hello%20Navanext%2C%20I%20am%20interested%20in%20verifying%20plots%20in%20Tamil%20Nadu.%20Please%20guide%20me."
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-emerald-50 text-emerald-800 transition-colors"
@@ -151,7 +151,7 @@ export const FloatingConcierge: React.FC = () => {
 
           {/* Quick WhatsApp Direct Button */}
           <a
-            href="https://wa.me/917200386806?text=Hello%20Navanextventures%2C%20I%20am%20interested%20in%20verifying%20plots%20in%20Tamil%20Nadu.%20Please%20guide%20me."
+            href="https://wa.me/917200386806?text=Hello%20Navanext%2C%20I%20am%20interested%20in%20verifying%20plots%20in%20Tamil%20Nadu.%20Please%20guide%20me."
             target="_blank"
             rel="noreferrer"
             className="h-11 px-3.5 rounded-full bg-[#25D366] text-white shadow-xl hover:bg-[#20ba59] transition-all flex items-center gap-2 cursor-pointer font-medium text-xs hover:shadow-2xl"

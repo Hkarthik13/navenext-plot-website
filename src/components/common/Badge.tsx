@@ -30,6 +30,12 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       bg: 'bg-rose-50 text-rose-800 border-rose-200',
       dot: 'bg-rose-500',
       description: 'Registered to property owner'
+    },
+    UNAVAILABLE: {
+      label: 'Unavailable',
+      bg: 'bg-slate-100 text-slate-700 border-slate-300',
+      dot: 'bg-slate-500',
+      description: 'Not available for booking'
     }
   };
 
